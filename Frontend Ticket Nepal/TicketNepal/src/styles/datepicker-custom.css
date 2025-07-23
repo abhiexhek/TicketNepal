@@ -1,0 +1,63 @@
+/* Custom styles for react-datepicker */
+.custom-datepicker,
+.custom-datepicker .react-datepicker__triangle,
+.custom-datepicker .react-datepicker__header,
+.custom-datepicker .react-datepicker__month,
+.custom-datepicker .react-datepicker__time-container .react-datepicker__time,
+.custom-datepicker .react-datepicker__time-list {
+  background: #fff !important;
+}
+.custom-datepicker input.react-datepicker-ignore-onclickoutside,
+.custom-datepicker input.react-datepicker__input-container,
+.react-datepicker__input-container input {
+  background: #fff !important;
+  border: 1px solid var(--tw-border-input, #e5e7eb) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 1rem;
+  color: #1e293b;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  box-sizing: border-box;
+}
+.custom-datepicker input.has-value,
+.react-datepicker__input-container input.has-value {
+  background: transparent !important;
+  color: #fff !important;
+}
+.custom-datepicker input:focus,
+.react-datepicker__input-container input:focus {
+  outline: none;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px #2563eb33;
+}
+.custom-datepicker .react-datepicker__day--selected,
+.custom-datepicker .react-datepicker__day--keyboard-selected {
+  background-color: #2563eb !important; /* Tailwind primary-600 */
+  color: #fff !important;
+  border-radius: 9999px !important;
+}
+.custom-datepicker .react-datepicker__day:hover {
+  background-color: #dbeafe !important; /* Tailwind primary-100 */
+  color: #1e293b !important;
+}
+.custom-datepicker .react-datepicker__current-month,
+.custom-datepicker .react-datepicker__header {
+  background: #f1f5f9;
+  border-bottom: none;
+}
+.custom-datepicker .react-datepicker__time-container .react-datepicker__time {
+  background: #f1f5f9 !important;
+}
+.custom-datepicker .react-datepicker__time-list {
+  background: #f1f5f9 !important;
+}
+.custom-datepicker .react-datepicker__time-list-item--selected {
+  background: #2563eb !important;
+  color: #fff !important;
+}
+.custom-datepicker .react-datepicker__time-list-item:hover {
+  background: #dbeafe !important;
+  color: #1e293b !important;
+} 
