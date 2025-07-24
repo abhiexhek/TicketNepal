@@ -1,8 +1,0 @@
-services:
-  - type: web
-    name: TicketNepal-Backend
-    plan: free
-    branch: main
-    rootDir: Backend Ticket Nepal/Backend
-    buildCommand: ./mvnw package
-    startCommand: java -jar target/*.jar
