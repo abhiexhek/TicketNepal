@@ -1,6 +1,7 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { UserRole } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
-export default function SignupPage() {
+function SignupPageContent() {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -57,46 +58,76 @@ export default function SignupPage() {
       <Card className="w-full max-w-sm mx-auto">
         <CardHeader className="text-center">
           <div className="flex justify-center items-center gap-2 mb-2">
-             <Flame className="h-7 w-7 text-primary" />
-             <h1 className="text-2xl font-bold font-headline">TicketNepal</h1>
+            <Flame className="h-7 w-7 text-primary" />
+            <h1 className="text-2xl font-bold font-headline">TicketNepal</h1>
           </div>
-          <CardTitle className="text-2xl font-bold">Create an Account</CardTitle>
-          <CardDescription>Enter your details to get started.</CardDescription>
+          <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
+          <CardDescription>Sign up to get started with TicketNepal.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input id="name" type="text" placeholder="Jane Doe" required value={name} onChange={e => setName(e.target.value)} />
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Your name"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoComplete="name"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
-                <Input id="username" type="text" placeholder="janedoe" required value={username} onChange={e => setUsername(e.target.value)} />
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="your_username"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={e => setEmail(e.target.value)} />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role">Sign up as</Label>
-                 <Select onValueChange={(value) => setRole(value as UserRole)} defaultValue={role}>
-                    <SelectTrigger id="role">
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
+                <Label htmlFor="role">Role</Label>
+                <Select value={role} onValueChange={setRole as any}>
+                  <SelectTrigger id="role">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Customer">Customer (Attend Events)</SelectItem>
-                    <SelectItem value="Organizer">Organizer (Create Events)</SelectItem>
-                    <SelectItem value="Staff">Staff (Validate Tickets)</SelectItem>
+                    <SelectItem value="Customer">Customer</SelectItem>
+                    <SelectItem value="Organizer">Organizer</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Signing up..." : "Sign up"}
+                {loading ? "Signing up..." : "Sign Up"}
               </Button>
             </div>
           </CardContent>
@@ -104,10 +135,18 @@ export default function SignupPage() {
         <CardFooter className="flex flex-col gap-2 text-center">
           <div>
             Already have an account?{' '}
-            <Link href={loginHref} className="underline text-primary">Login</Link>
+            <Link href={loginHref} className="underline text-primary">Log in</Link>
           </div>
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignupPageContent />
+    </Suspense>
   );
 }
