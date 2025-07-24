@@ -1,9 +1,8 @@
 "use client";
-export const dynamic = "force-dynamic";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 
-export default function VerifyPage() {
+function VerifyPageContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [status, setStatus] = useState("Verifying...");
@@ -24,5 +23,13 @@ export default function VerifyPage() {
       <h1>Email Verification</h1>
       <p>{status}</p>
     </div>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+      <VerifyPageContent />
+    </Suspense>
   );
 } 
