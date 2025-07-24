@@ -1,9 +1,7 @@
 'use client';
-
 export const dynamic = 'force-dynamic';
 
-
-import { useState, useContext } from "react";
+import { Suspense, useState, useContext } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +12,7 @@ import Link from "next/link";
 import { UserContext } from "@/context/UserContext";
 import { useToast } from "@/hooks/use-toast";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -120,5 +118,13 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
