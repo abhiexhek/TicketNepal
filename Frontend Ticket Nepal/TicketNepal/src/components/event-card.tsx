@@ -22,7 +22,7 @@ interface EventCardProps {
 export function EventCard({ event }: EventCardProps) {
   // Get backend API base URL from env, fallback to localhost for dev
   const API_BASE =
-    process.env.NEXT_PUBLIC_API__URL || "http://localhost:8080";
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
   // Compute full image URL
   const imageUrl = event.imageUrl?.startsWith("http")
