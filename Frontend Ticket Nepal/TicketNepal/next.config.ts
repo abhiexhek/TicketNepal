@@ -24,12 +24,18 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       // (Add production backend domain here if you deploy)
-      // {
-      //   protocol: 'https',
-      //   hostname: 'your-production-backend.com',
-      //   port: '',
-      //   pathname: '/uploads/images/**',
-      // },
+      {
+        protocol: 'https',
+        hostname: 'ticketnepal.onrender.com',
+        port: '',
+        pathname: '/uploads/images/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/dfecnmeeh/**',
+      },
     ],
   },
   env: {
