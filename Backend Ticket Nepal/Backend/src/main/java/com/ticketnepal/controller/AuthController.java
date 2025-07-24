@@ -6,6 +6,7 @@ import com.ticketnepal.security.JwtUtil;
 import com.ticketnepal.service.EmailService;
 import com.ticketnepal.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +31,9 @@ public class AuthController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Value("${frontend.base.url}")
+    private String frontendBaseUrl;
+
     // --- Registration for customer ---
     @PostMapping("/signup")
 public ResponseEntity<?> register(@RequestBody RegisterDto registerDto) {
@@ -49,7 +53,7 @@ public ResponseEntity<?> register(@RequestBody RegisterDto registerDto) {
     String userRole = registerDto.getRole() != null ? registerDto.getRole() : "CUSTOMER";
     User newUser = userService.registerUser(user, userRole);
 
-    String link = "http://localhost:8080/api/auth/verify?token=" + newUser.getVerificationToken();
+    String link = frontendBaseUrl + "/auth/verify?token=" + newUser.getVerificationToken();
     emailService.sendSimpleMessage(newUser.getEmail(),
             "Verify your ticketnepal account",
             "Click to verify your account: " + link);
@@ -82,7 +86,7 @@ public ResponseEntity<?> register(@RequestBody RegisterDto registerDto) {
         user.setUsername(registerDto.getUsername());
         User newUser = userService.registerUser(user, role);
 
-        String link = "http://localhost:8080/api/auth/verify?token=" + newUser.getVerificationToken();
+        String link = frontendBaseUrl + "/auth/verify?token=" + newUser.getVerificationToken();
         emailService.sendSimpleMessage(newUser.getEmail(),
                 "Verify your ticketnepal account",
                 "Click to verify your account: " + link);
@@ -155,7 +159,7 @@ public ResponseEntity<?> register(@RequestBody RegisterDto registerDto) {
         user.setResetTokenExpiry(new Date(System.currentTimeMillis() + 1000 * 60 * 30)); // 30 min expiry
         userRepository.save(user);
 
-        String link = "http://localhost:9002/auth/reset-password?token=" + token;
+        String link = frontendBaseUrl + "/auth/reset-password?token=" + token;
         emailService.sendSimpleMessage(user.getEmail(), "Reset your TicketNepal password", "Click to reset: " + link);
 
         return ResponseEntity.ok(Map.of("message", "If your email is registered, a reset link has been sent."));

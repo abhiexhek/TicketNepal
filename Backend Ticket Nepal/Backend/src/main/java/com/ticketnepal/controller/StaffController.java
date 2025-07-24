@@ -5,6 +5,7 @@ import com.ticketnepal.repository.UserRepository;
 import com.ticketnepal.service.EmailService;
 import com.ticketnepal.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,9 @@ public class StaffController {
     private UserService userService;
     @Autowired
     private EmailService emailService;
+
+    @Value("${frontend.base.url}")
+    private String frontendBaseUrl;
 
     // Accept only DTO, not entity
     public static class RegisterDto {
@@ -53,7 +57,7 @@ public class StaffController {
         staff.setPassword(staffDto.getPassword()); // Should be encoded in UserService
 
         User newStaff = userService.registerUser(staff, "STAFF");
-        String link = "http://localhost:8080/api/auth/verify?token=" + newStaff.getVerificationToken();
+        String link = frontendBaseUrl + "/auth/verify?token=" + newStaff.getVerificationToken();
         emailService.sendSimpleMessage(newStaff.getEmail(),
                 "You're invited as staff to ticketnepal",
                 "Click to finish staff registration: " + link);
