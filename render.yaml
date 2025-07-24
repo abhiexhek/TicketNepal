@@ -1,7 +1,6 @@
 services:
   - type: web
     name: TicketNepal-Backend
-    runtime: java
     plan: free
     branch: main
     rootDir: Backend Ticket Nepal/Backend
