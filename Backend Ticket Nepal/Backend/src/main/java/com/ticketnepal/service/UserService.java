@@ -19,7 +19,26 @@ public class UserService {
 
     public User registerUser(User user, String role) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRole(role);
+        // Standardize role casing
+        String formattedRole;
+        switch (role.toUpperCase()) {
+            case "STAFF":
+                formattedRole = "Staff";
+                break;
+            case "CUSTOMER":
+                formattedRole = "Customer";
+                break;
+            case "ORGANIZER":
+                formattedRole = "Organizer";
+                break;
+            case "ADMIN":
+                formattedRole = "Admin";
+                break;
+            default:
+                // Capitalize first letter, lowercase the rest
+                formattedRole = role.substring(0, 1).toUpperCase() + role.substring(1).toLowerCase();
+        }
+        user.setRole(formattedRole);
         user.setVerified(false);
         user.setVerificationToken(UUID.randomUUID().toString());
         return userRepository.save(user);
