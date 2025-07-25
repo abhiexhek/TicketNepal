@@ -301,24 +301,11 @@ public class EventController {
         staffApplicationRepository.save(app);
         String html = """
             <html>
-            <head>
-                <title>Staff Application Approved</title>
-                <style>
-                    body { background: #f4f8fb; font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; }
-                    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 40px 32px; text-align: center; }
-                    .icon { font-size: 48px; color: #4caf50; margin-bottom: 16px; }
-                    h2 { color: #222; margin-bottom: 12px; }
-                    p { color: #555; margin-bottom: 24px; }
-                    .btn { background: #4caf50; color: #fff; padding: 10px 28px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; text-decoration: none; }
-                    .btn:hover { background: #388e3c; }
-                </style>
-            </head>
-            <body>
-                <div class='card'>
-                    <div class='icon'>✔️</div>
+            <head><title>Staff Application Approved</title></head>
+            <body style='background:#f4f8fb; font-family:Arial,sans-serif; display:flex; align-items:center; justify-content:center; height:100vh;'>
+                <div style='background:#fff; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.08); padding:40px 32px; text-align:center;'>
                     <h2>Staff Application Approved!</h2>
                     <p>The staff application has been successfully approved for this event.<br>Thank you for your action.</p>
-                    <a href='/' class='btn'>Go to Home</a>
                 </div>
             </body>
             </html>
