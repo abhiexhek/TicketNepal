@@ -89,6 +89,7 @@ public class TicketController {
             ticket.setEventId(eventId);
             ticket.setSeat(seat);
             ticket.setTransactionId(transactionId);
+            // For group QR, qrCodeHint is the same as transactionId
             ticket.setQrCodeHint(transactionId); // Use transactionId as QR code hint
             ticket.setPrice(event.getPrice());
             ticket = ticketRepository.save(ticket);

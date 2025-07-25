@@ -34,8 +34,10 @@ export default function ScanTicketPage() {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL;
       const token = localStorage.getItem('authToken');
-      // Try group QR code validation only
-      const response = await fetch(`${API_URL}/api/tickets/validate/transaction?transactionId=${encodeURIComponent(qrHint)}`, {
+      // Clean the scanned value
+      const cleanHint = qrHint.trim();
+      // Try group QR code validation first
+      let response = await fetch(`${API_URL}/api/tickets/validate/transaction?transactionId=${encodeURIComponent(cleanHint)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (response.ok) {
@@ -48,11 +50,27 @@ export default function ScanTicketPage() {
           description: `Transaction contains ${data.tickets.length} seats.`,
           variant: "default"
         });
+        return;
+      }
+      // If group validation fails, try single ticket validation
+      response = await fetch(`${API_URL}/api/tickets/validate?code=${encodeURIComponent(cleanHint)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setScannedTicket(data.ticket);
+        setGroupResult(null);
+        setIsValidTicket(true);
+        toast({
+          title: "Ticket Verified!",
+          description: `Ticket ID: ${data.ticket.id}`,
+          variant: "default"
+        });
       } else {
         setGroupResult(null);
         setScannedTicket(null);
         setIsValidTicket(false);
-        toast({ title: "Invalid or Legacy QR Code", description: "This QR code is not valid for group ticket validation. Please use a new QR code.", variant: "destructive" });
+        toast({ title: "Invalid or Legacy QR Code", description: "This QR code is not valid for ticket validation. Please use a new QR code.", variant: "destructive" });
       }
     } catch (error) {
       setGroupResult(null);
@@ -195,7 +213,7 @@ export default function ScanTicketPage() {
           {isValidTicket ? (
             <>
               <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-              <AlertTitle>Group Ticket Verified</AlertTitle>
+              <AlertTitle>Ticket Verified</AlertTitle>
               <AlertDescription>
                 {groupResult && (
                   <div>
@@ -213,6 +231,15 @@ export default function ScanTicketPage() {
                     </ul>
                   </div>
                 )}
+                {scannedTicket && (
+                  <div>
+                    <div className="font-semibold mb-2">Ticket ID: {scannedTicket.id}</div>
+                    <div><strong>User Name:</strong> {scannedTicket.userName}</div>
+                    <div><strong>Seat:</strong> {scannedTicket.seat}</div>
+                    <div><strong>Event ID:</strong> {String(scannedTicket.eventId)}</div>
+                    {/* Always use String(id) when passing IDs */}
+                  </div>
+                )}
               </AlertDescription>
             </>
           ) : (
@@ -220,7 +247,7 @@ export default function ScanTicketPage() {
               <XCircle className="h-5 w-5 text-red-500 mr-2" />
               <AlertTitle>Invalid or Legacy QR Code</AlertTitle>
               <AlertDescription>
-                This QR code is not valid for group ticket validation. Please use a new QR code.
+                This QR code is not valid for ticket validation. Please use a new QR code.
               </AlertDescription>
             </>
           )}
