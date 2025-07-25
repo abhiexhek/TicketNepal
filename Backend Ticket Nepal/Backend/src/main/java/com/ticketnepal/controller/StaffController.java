@@ -56,7 +56,7 @@ public class StaffController {
         staff.setEmail(staffDto.getEmail());
         staff.setPassword(staffDto.getPassword()); // Should be encoded in UserService
 
-        User newStaff = userService.registerUser(staff, "STAFF");
+        User newStaff = userService.registerUser(staff, "Staff");
         String link = frontendBaseUrl + "/auth/verify?token=" + newStaff.getVerificationToken();
         emailService.sendSimpleMessage(newStaff.getEmail(),
                 "You're invited as staff to ticketnepal",
