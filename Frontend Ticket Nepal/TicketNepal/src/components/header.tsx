@@ -104,9 +104,9 @@ export function Header() {
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href={dashboardLink}>
+                      <Link href={dashboardLink} className={cn("flex items-center gap-1 px-3 py-2 rounded hover:bg-muted transition", pathname.startsWith("/admin") && "bg-muted font-bold")}> 
                         {getDashboardIcon()}
-                        <span>{currentUser.role} Dashboard</span>
+                        {currentUser.role === 'Staff' ? 'Staff Dashboard' : 'Dashboard'}
                       </Link>
                     </DropdownMenuItem>
                   </>
