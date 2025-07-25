@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Header } from "@/components/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Tag } from "lucide-react";
+import { Calendar, MapPin, Tag, Clock, CheckCircle, Ban } from "lucide-react";
 import { UserContext } from "@/context/UserContext";
 import { toSafeDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,8 @@ export default function EventDetailPage() {
   const { toast } = useToast();
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [applicationStatus, setApplicationStatus] = useState<null | 'PENDING' | 'APPROVED' | 'REJECTED'>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -40,6 +42,32 @@ export default function EventDetailPage() {
     };
     fetchEvent();
   }, [id]);
+
+  // Check staff application status for this event
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (!id || !currentUser || currentUser.role !== "Staff") return;
+      setCheckingStatus(true);
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL;
+        const token = localStorage.getItem('authToken');
+        const res = await fetch(`${API_URL}/api/events/staff/${currentUser.id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const apps = await res.json();
+          const app = apps.find((a: any) => a.id === id);
+          setApplicationStatus(app ? app.status : null);
+        } else {
+          setApplicationStatus(null);
+        }
+      } catch {
+        setApplicationStatus(null);
+      }
+      setCheckingStatus(false);
+    };
+    checkStatus();
+  }, [id, currentUser]);
 
   if (loading) {
     return (
@@ -105,34 +133,45 @@ export default function EventDetailPage() {
                 </Button>
               )}
               {currentUser && currentUser.role === "Staff" && (
-                <Button
-                  onClick={async () => {
-                    setApplying(true);
-                    try {
-                      const API_URL = process.env.NEXT_PUBLIC_API_URL;
-                      const token = localStorage.getItem('authToken');
-                      const response = await fetch(`${API_URL}/api/events/${event.id}/apply-staff`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-                        body: JSON.stringify({ staffId: currentUser.id }),
-                      });
-                      if (response.ok) {
-                        toast({ title: 'Applied as Staff', description: 'Your application has been sent to the organizer.' });
-                        setApplied(true);
-                      } else {
-                        const err = await response.json();
-                        toast({ title: 'Error', description: err.error || err.message || 'Failed to apply as staff.', variant: 'destructive' });
-                      }
-                    } catch (error) {
-                      toast({ title: 'Error', description: 'An error occurred.', variant: 'destructive' });
-                    }
-                    setApplying(false);
-                  }}
-                  disabled={applying || applied}
-                  variant={applied ? 'outline' : 'default'}
-                >
-                  {applied ? 'Applied' : applying ? 'Applying...' : 'Apply as Staff'}
-                </Button>
+                <>
+                  {checkingStatus ? (
+                    <Button disabled>Checking status...</Button>
+                  ) : applicationStatus === null ? (
+                    <Button
+                      onClick={async () => {
+                        setApplying(true);
+                        try {
+                          const API_URL = process.env.NEXT_PUBLIC_API_URL;
+                          const token = localStorage.getItem('authToken');
+                          const response = await fetch(`${API_URL}/api/events/${event.id}/apply-staff`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                            body: JSON.stringify({ staffId: currentUser.id }),
+                          });
+                          if (response.ok) {
+                            toast({ title: 'Applied as Staff', description: 'Your application has been sent to the organizer.' });
+                            setApplicationStatus('PENDING');
+                          } else {
+                            const err = await response.json();
+                            toast({ title: 'Error', description: err.error || err.message || 'Failed to apply as staff.', variant: 'destructive' });
+                          }
+                        } catch (error) {
+                          toast({ title: 'Error', description: 'An error occurred.', variant: 'destructive' });
+                        }
+                        setApplying(false);
+                      }}
+                      disabled={applying}
+                    >
+                      {applying ? 'Applying...' : 'Apply as Staff'}
+                    </Button>
+                  ) : applicationStatus === 'PENDING' ? (
+                    <Button disabled variant="outline"><Clock className="w-4 h-4 mr-2 text-yellow-500" /> Pending Approval</Button>
+                  ) : applicationStatus === 'APPROVED' ? (
+                    <Button disabled variant="outline"><CheckCircle className="w-4 h-4 mr-2 text-green-500" /> Approved</Button>
+                  ) : applicationStatus === 'REJECTED' ? (
+                    <Button disabled variant="destructive"><Ban className="w-4 h-4 mr-2 text-red-500" /> Rejected</Button>
+                  ) : null}
+                </>
               )}
             </div>
           </Card>

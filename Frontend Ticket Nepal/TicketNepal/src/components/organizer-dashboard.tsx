@@ -15,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 
 export function OrganizerDashboard() {
     const { currentUser } = useContext(UserContext);
-    // const { tickets = [] } = useContext(EventContext);
 
     const [organizerEvents, setOrganizerEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -98,7 +97,7 @@ export function OrganizerDashboard() {
             </div>
 
             {/* Staff Creation Form - only for organizers */}
-            {currentUser?.role === 'ORGANIZER' && (
+            {currentUser?.role === 'Organizer' && (
                 <Card className="mb-8 max-w-xl mx-auto">
                     <CardHeader>
                         <CardTitle>Add Staff</CardTitle>
