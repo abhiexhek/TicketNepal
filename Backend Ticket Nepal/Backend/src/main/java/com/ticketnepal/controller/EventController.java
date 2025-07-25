@@ -13,6 +13,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import com.ticketnepal.service.ImageService;
+import com.ticketnepal.repository.UserRepository;
+import com.ticketnepal.model.User;
+import com.ticketnepal.service.EmailService;
+import com.ticketnepal.model.StaffApplication;
+import com.ticketnepal.repository.StaffApplicationRepository;
+import java.util.UUID;
 
 import java.util.*;
 import java.util.regex.Pattern;
@@ -44,6 +50,13 @@ public class EventController {
 
     @Autowired
     private ImageService imageService;
+
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private EmailService emailService;
+    @Autowired
+    private StaffApplicationRepository staffApplicationRepository;
 
     // Get all events for an organizer
     @GetMapping("/organizer/{organizerId}")
@@ -222,6 +235,120 @@ public class EventController {
             logger.error("Failed to update event", e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @PostMapping("/{eventId}/apply-staff")
+    public ResponseEntity<?> applyAsStaff(@PathVariable String eventId, @RequestBody Map<String, String> body) {
+        try {
+            String staffId = body.get("staffId");
+            if (staffId == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Missing staffId"));
+            }
+            Optional<Event> eventOpt = eventRepository.findById(eventId);
+            if (eventOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Event not found"));
+            }
+            Event event = eventOpt.get();
+            Optional<User> staffOpt = userRepository.findById(staffId);
+            if (staffOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Staff user not found"));
+            }
+            User staff = staffOpt.get();
+            Optional<User> organizerOpt = userRepository.findById(event.getOrganizer());
+            if (organizerOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Organizer not found"));
+            }
+            User organizer = organizerOpt.get();
+            // Check if already applied
+            Optional<StaffApplication> existing = staffApplicationRepository.findByEventIdAndStaffId(eventId, staffId);
+            if (existing.isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Already applied for this event."));
+            }
+            // Create application
+            String token = UUID.randomUUID().toString();
+            StaffApplication app = new StaffApplication(eventId, staffId, "PENDING", token);
+            staffApplicationRepository.save(app);
+            // Compose email with approve/reject links
+            String baseUrl = "https://ticketnepal.onrender.com"; // TODO: make configurable
+            String approveLink = baseUrl + "/api/events/" + eventId + "/approve-staff?staffId=" + staffId + "&token=" + token;
+            String rejectLink = baseUrl + "/api/events/" + eventId + "/reject-staff?staffId=" + staffId + "&token=" + token;
+            String subject = "Staff Application for Event: " + event.getName();
+            String text = String.format(
+                "Hello %s,\n\nStaff user %s (username: %s, email: %s) has applied to work at your event:\n\n" +
+                "Event: %s\nDate: %s\nLocation: %s\n\nApprove: %s\nReject: %s\n\nTicketNepal Team",
+                organizer.getName(), staff.getName(), staff.getUsername(), staff.getEmail(),
+                event.getName(), event.getEventStart(), event.getLocation(),
+                approveLink, rejectLink
+            );
+            emailService.sendSimpleMessage(organizer.getEmail(), subject, text);
+            return ResponseEntity.ok(Map.of("message", "Staff application sent to organizer."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to apply as staff."));
+        }
+    }
+
+    @GetMapping("/{eventId}/approve-staff")
+    public ResponseEntity<?> approveStaff(@PathVariable String eventId, @RequestParam String staffId, @RequestParam String token) {
+        Optional<StaffApplication> appOpt = staffApplicationRepository.findByEventIdAndStaffId(eventId, staffId);
+        if (appOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Application not found"));
+        }
+        StaffApplication app = appOpt.get();
+        if (!app.getToken().equals(token)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Invalid token"));
+        }
+        app.setStatus("APPROVED");
+        staffApplicationRepository.save(app);
+        return ResponseEntity.ok(Map.of("message", "Staff approved for event."));
+    }
+
+    @GetMapping("/{eventId}/reject-staff")
+    public ResponseEntity<?> rejectStaff(@PathVariable String eventId, @RequestParam String staffId, @RequestParam String token) {
+        Optional<StaffApplication> appOpt = staffApplicationRepository.findByEventIdAndStaffId(eventId, staffId);
+        if (appOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Application not found"));
+        }
+        StaffApplication app = appOpt.get();
+        if (!app.getToken().equals(token)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Invalid token"));
+        }
+        app.setStatus("REJECTED");
+        staffApplicationRepository.save(app);
+        return ResponseEntity.ok(Map.of("message", "Staff rejected for event."));
+    }
+
+    @GetMapping("/staff/{staffId}")
+    public ResponseEntity<?> getEventsForStaff(@PathVariable String staffId) {
+        List<StaffApplication> apps = staffApplicationRepository.findAll();
+        List<StaffApplication> staffApps = new ArrayList<>();
+        for (StaffApplication app : apps) {
+            if (app.getStaffId().equals(staffId)) {
+                staffApps.add(app);
+            }
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (StaffApplication app : staffApps) {
+            Optional<Event> eventOpt = eventRepository.findById(app.getEventId());
+            if (eventOpt.isPresent()) {
+                Event event = eventOpt.get();
+                Map<String, Object> eventMap = new HashMap<>();
+                eventMap.put("id", event.getId());
+                eventMap.put("name", event.getName());
+                eventMap.put("category", event.getCategory());
+                eventMap.put("location", event.getLocation());
+                eventMap.put("description", event.getDescription());
+                eventMap.put("organizer", event.getOrganizer());
+                eventMap.put("imageUrl", event.getImageUrl());
+                eventMap.put("price", event.getPrice());
+                eventMap.put("income", event.getIncome());
+                eventMap.put("seats", event.getSeats());
+                eventMap.put("eventStart", event.getEventStart());
+                eventMap.put("eventEnd", event.getEventEnd());
+                eventMap.put("status", app.getStatus());
+                result.add(eventMap);
+            }
+        }
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{id}")

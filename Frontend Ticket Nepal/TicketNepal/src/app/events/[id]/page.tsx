@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, MapPin, Tag } from "lucide-react";
 import { UserContext } from "@/context/UserContext";
 import { toSafeDate } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export default function EventDetailPage() {
   const { id } = useParams();
@@ -16,6 +17,9 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { currentUser } = useContext(UserContext);
+  const { toast } = useToast();
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -92,12 +96,42 @@ export default function EventDetailPage() {
               <div className="mb-2 text-sm text-muted-foreground">Total Seats: <b>{event.seats?.length || 0}</b></div>
               <div className="mb-2 text-sm text-muted-foreground">Organizer: <b>{event.organizer}</b></div>
             </CardContent>
-            <div className="flex justify-end p-6 pt-0">
+            <div className="flex justify-end p-6 pt-0 gap-2">
               {(!currentUser || currentUser.role === "Customer") && (
                 <Button asChild>
                   <Link href={`/events/${event.id}/book`}>
                     Book Ticket
                   </Link>
+                </Button>
+              )}
+              {currentUser && currentUser.role === "Staff" && (
+                <Button
+                  onClick={async () => {
+                    setApplying(true);
+                    try {
+                      const API_URL = process.env.NEXT_PUBLIC_API_URL;
+                      const token = localStorage.getItem('authToken');
+                      const response = await fetch(`${API_URL}/api/events/${event.id}/apply-staff`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                        body: JSON.stringify({ staffId: currentUser.id }),
+                      });
+                      if (response.ok) {
+                        toast({ title: 'Applied as Staff', description: 'Your application has been sent to the organizer.' });
+                        setApplied(true);
+                      } else {
+                        const err = await response.json();
+                        toast({ title: 'Error', description: err.error || err.message || 'Failed to apply as staff.', variant: 'destructive' });
+                      }
+                    } catch (error) {
+                      toast({ title: 'Error', description: 'An error occurred.', variant: 'destructive' });
+                    }
+                    setApplying(false);
+                  }}
+                  disabled={applying || applied}
+                  variant={applied ? 'outline' : 'default'}
+                >
+                  {applied ? 'Applied' : applying ? 'Applying...' : 'Apply as Staff'}
                 </Button>
               )}
             </div>

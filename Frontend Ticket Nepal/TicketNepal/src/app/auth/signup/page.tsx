@@ -29,10 +29,12 @@ function SignupPageContent() {
     e.preventDefault();
     setLoading(true);
     try {
+      // Map role to uppercase for backend
+      const backendRole = role.toUpperCase();
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, username, email, password, role }),
+        body: JSON.stringify({ name, username, email, password, role: backendRole }),
       });
       if (response.ok) {
         toast({ title: 'Signup Successful!', description: 'Your account has been created. Please log in.' });
@@ -123,6 +125,7 @@ function SignupPageContent() {
                   <SelectContent>
                     <SelectItem value="Customer">Customer</SelectItem>
                     <SelectItem value="Organizer">Organizer</SelectItem>
+                    <SelectItem value="Staff">Staff</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
