@@ -8,6 +8,9 @@ import Link from "next/link";
 import { UserContext } from '@/context/UserContext';
 import { EventCard } from './event-card';
 import Image from "next/image";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 
 export function OrganizerDashboard() {
@@ -16,6 +19,37 @@ export function OrganizerDashboard() {
 
     const [organizerEvents, setOrganizerEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const { toast } = useToast();
+    const [staffForm, setStaffForm] = useState({ name: '', username: '', email: '', password: '' });
+    const [staffLoading, setStaffLoading] = useState(false);
+
+    const handleStaffInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setStaffForm({ ...staffForm, [e.target.name]: e.target.value });
+    };
+
+    const handleStaffSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setStaffLoading(true);
+        try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL;
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(`${API_URL}/api/staff`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                body: JSON.stringify(staffForm),
+            });
+            if (response.ok) {
+                toast({ title: 'Staff Created', description: 'Staff user has been invited and must verify their email.' });
+                setStaffForm({ name: '', username: '', email: '', password: '' });
+            } else {
+                const err = await response.json();
+                toast({ title: 'Error', description: err.error || err.message || 'Failed to create staff.', variant: 'destructive' });
+            }
+        } catch (error) {
+            toast({ title: 'Error', description: 'An error occurred.', variant: 'destructive' });
+        }
+        setStaffLoading(false);
+    };
 
     useEffect(() => {
         if (!currentUser?.id) return;
@@ -62,6 +96,37 @@ export function OrganizerDashboard() {
                     </Link>
                 </Button>
             </div>
+
+            {/* Staff Creation Form - only for organizers */}
+            {currentUser?.role === 'ORGANIZER' && (
+                <Card className="mb-8 max-w-xl mx-auto">
+                    <CardHeader>
+                        <CardTitle>Add Staff</CardTitle>
+                        <CardDescription>Invite a staff member to your team. They will receive a verification email.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleStaffSubmit} className="space-y-4">
+                            <div>
+                                <Label htmlFor="staff-name">Name</Label>
+                                <Input id="staff-name" name="name" value={staffForm.name} onChange={handleStaffInputChange} required />
+                            </div>
+                            <div>
+                                <Label htmlFor="staff-username">Username</Label>
+                                <Input id="staff-username" name="username" value={staffForm.username} onChange={handleStaffInputChange} required />
+                            </div>
+                            <div>
+                                <Label htmlFor="staff-email">Email</Label>
+                                <Input id="staff-email" name="email" type="email" value={staffForm.email} onChange={handleStaffInputChange} required />
+                            </div>
+                            <div>
+                                <Label htmlFor="staff-password">Password</Label>
+                                <Input id="staff-password" name="password" type="password" value={staffForm.password} onChange={handleStaffInputChange} required />
+                            </div>
+                            <Button type="submit" disabled={staffLoading}>{staffLoading ? 'Creating...' : 'Add Staff'}</Button>
+                        </form>
+                    </CardContent>
+                </Card>
+            )}
 
             <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto px-2 sm:px-4">
                 <Card>
