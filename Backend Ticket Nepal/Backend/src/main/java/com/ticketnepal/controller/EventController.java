@@ -21,10 +21,10 @@ import com.ticketnepal.repository.StaffApplicationRepository;
 import java.util.UUID;
 
 import java.util.*;
-import java.util.regex.Pattern;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.OffsetDateTime;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 @EnableScheduling
@@ -34,13 +34,15 @@ public class EventController {
 
     private static final Logger logger = LoggerFactory.getLogger(EventController.class);
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-    private static final Pattern INVALID_CHARS = Pattern.compile("[^a-zA-Z0-9._-]");
     private static final List<String> ALLOWED_MIME_TYPES = List.of(
             "image/jpeg",
             "image/png",
             "image/gif",
             "image/webp"
     );
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     @Autowired
     private EventRepository eventRepository;
@@ -269,7 +271,7 @@ public class EventController {
             StaffApplication app = new StaffApplication(eventId, staffId, "PENDING", token);
             staffApplicationRepository.save(app);
             // Compose email with approve/reject links
-            String baseUrl = "https://ticketnepal.onrender.com"; // TODO: make configurable
+            // baseUrl is now injected from properties
             String approveLink = baseUrl + "/api/events/" + eventId + "/approve-staff?staffId=" + staffId + "&token=" + token;
             String rejectLink = baseUrl + "/api/events/" + eventId + "/reject-staff?staffId=" + staffId + "&token=" + token;
             String subject = "Staff Application for Event: " + event.getName();
@@ -299,17 +301,15 @@ public class EventController {
         }
         app.setStatus("APPROVED");
         staffApplicationRepository.save(app);
-        String html = """
-            <html>
-            <head><title>Staff Application Approved</title></head>
-            <body style='background:#f4f8fb; font-family:Arial,sans-serif; display:flex; align-items:center; justify-content:center; height:100vh;'>
-                <div style='background:#fff; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.08); padding:40px 32px; text-align:center;'>
-                    <h2>Staff Application Approved!</h2>
-                    <p>The staff application has been successfully approved for this event.<br>Thank you for your action.</p>
-                </div>
-            </body>
-            </html>
-        """;
+        String html = "<html>"
+            + "<head><title>Staff Application Approved</title></head>"
+            + "<body style='background:#f4f8fb; font-family:Arial,sans-serif; display:flex; align-items:center; justify-content:center; height:100vh;'>"
+            + "<div style='background:#fff; border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.08); padding:40px 32px; text-align:center;'>"
+            + "<h2>Staff Application Approved!</h2>"
+            + "<p>The staff application has been successfully approved for this event.<br>Thank you for your action.</p>"
+            + "</div>"
+            + "</body>"
+            + "</html>";
         return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
     }
 

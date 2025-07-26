@@ -3,9 +3,7 @@ package com.ticketnepal.config;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.*;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
-import org.springframework.web.servlet.resource.PathResourceResolver;
 
-import java.nio.file.Paths;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -37,12 +35,6 @@ public class WebConfig implements WebMvcConfigurer {
                 )
                 .allowCredentials(true)
                 .maxAge(3600);
-    }
-
-
-    @Override
-    public void configurePathMatch(PathMatchConfigurer configurer) {
-        configurer.setUseTrailingSlashMatch(false);
     }
 
 

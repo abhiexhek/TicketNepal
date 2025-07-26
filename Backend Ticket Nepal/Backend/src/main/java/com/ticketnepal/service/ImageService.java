@@ -14,15 +14,14 @@ public class ImageService {
     @Autowired
     private Cloudinary cloudinary;
 
+    @SuppressWarnings("unchecked")
     public String uploadImage(MultipartFile file) throws IOException {
-        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+        Map<String, Object> uploadResult = (Map<String, Object>) cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
         return uploadResult.get("secure_url").toString();
     }
 
     public void deleteImageByUrl(String imageUrl) throws IOException {
         if (imageUrl == null || imageUrl.isEmpty()) return;
-        // Extract public_id from the Cloudinary URL
-        // Example: https://res.cloudinary.com/<cloud_name>/image/upload/v1234567890/abc123.jpg
         String[] parts = imageUrl.split("/");
         String publicIdWithExtension = parts[parts.length - 1];
         String publicId = publicIdWithExtension.contains(".") ? publicIdWithExtension.substring(0, publicIdWithExtension.lastIndexOf('.')) : publicIdWithExtension;

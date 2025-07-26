@@ -60,7 +60,8 @@ public class TicketController {
     public ResponseEntity<?> bookTickets(@RequestBody Map<String, Object> req) throws IOException, MessagingException, WriterException {
         String userId = (String) req.get("userId");
         String eventId = (String) req.get("eventId");
-        List<String> seats = (List<String>) req.get("seats");
+        Object seatsObj = req.get("seats");
+        List<String> seats = seatsObj instanceof List<?> ? ((List<?>) seatsObj).stream().map(String.class::cast).toList() : null;
         if (seats == null || seats.isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "No seats selected."));
@@ -337,7 +338,10 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
         if (ticketId != null) {
             ticketOpt = ticketRepository.findById(ticketId);
         } else if (qrCodeHint != null) {
-            ticketOpt = ticketRepository.findByQrCodeHint(qrCodeHint);
+            List<Ticket> tickets = ticketRepository.findByQrCodeHint(qrCodeHint);
+            if (!tickets.isEmpty()) {
+                ticketOpt = Optional.of(tickets.get(0)); // Use the first ticket found
+            }
         }
         if (ticketOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Ticket not found"));
