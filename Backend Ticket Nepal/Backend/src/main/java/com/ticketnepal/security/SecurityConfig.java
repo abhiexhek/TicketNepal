@@ -43,6 +43,7 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/api/tickets/validate",
                                 "/api/tickets/validate/transaction",
+                                "/api/tickets/validate/scan",
                                 "/api/tickets/qr/transaction/**",
                                 "/api/tickets/qr/**",
                                 "/api/tickets/reserved",
