@@ -11,6 +11,7 @@ export interface Event {
   organizer: string;
   imageUrl: string;
   price: number;
+  seats?: string[];
 }
 
 export interface Ticket {

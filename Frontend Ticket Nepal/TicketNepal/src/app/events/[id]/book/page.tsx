@@ -17,21 +17,7 @@ import { UserContext } from "@/context/UserContext";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-
-export interface Event {
-  id: string;
-  name: string;
-  category: string;
-  eventStart: string;
-  eventEnd: string;
-  location: string;
-  city: string;
-  description: string;
-  organizer: string;
-  imageUrl: string;
-  price: number;
-  seats?: string[];
-}
+import type { Event } from "@/lib/types";
 
 const paymentFormSchema = z.object({
   cardNumber: z.string().regex(/^\d{16}$/, "Must be 16 digits"),
@@ -48,20 +34,21 @@ export default function BookTicketPage() {
   const { currentUser, isLoading } = useContext(UserContext);
   const event = events.find((e) => e.id === params.id);
 
-  // Show loading state while events are being fetched
-  if (!event && events.length === 0) {
-    return <div className="py-8 text-center">Loading event...</div>;
-  }
-
-  // Show not found if events are loaded but event is missing
-  if (events.length > 0 && !event) {
-    return <div className="py-8 text-center text-red-500">Event not found.</div>;
-  }
-
+  // Move ALL hooks to the top before any conditional returns
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [reservedSeats, setReservedSeats] = useState<string[]>([]);
   const [showPayment, setShowPayment] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const form = useForm<z.infer<typeof paymentFormSchema>>({
+    resolver: zodResolver(paymentFormSchema),
+    defaultValues: {
+      cardNumber: "",
+      expiryDate: "",
+      cvc: "",
+      nameOnCard: "",
+    },
+  });
 
   // Fetch reserved seats for the event
   const fetchReservedSeats = async () => {
@@ -102,15 +89,15 @@ export default function BookTicketPage() {
     return () => clearInterval(interval);
   }, [event]);
 
-  const form = useForm<z.infer<typeof paymentFormSchema>>({
-    resolver: zodResolver(paymentFormSchema),
-    defaultValues: {
-      cardNumber: "",
-      expiryDate: "",
-      cvc: "",
-      nameOnCard: "",
-    },
-  });
+  // Show loading state while events are being fetched
+  if (!event && events.length === 0) {
+    return <div className="py-8 text-center">Loading event...</div>;
+  }
+
+  // Show not found if events are loaded but event is missing
+  if (events.length > 0 && !event) {
+    return <div className="py-8 text-center text-red-500">Event not found.</div>;
+  }
 
   if (!event) {
     notFound();
