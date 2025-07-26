@@ -48,6 +48,16 @@ export default function BookTicketPage() {
   const { currentUser, isLoading } = useContext(UserContext);
   const event = events.find((e) => e.id === params.id);
 
+  // Show loading state while events are being fetched
+  if (!event && events.length === 0) {
+    return <div className="py-8 text-center">Loading event...</div>;
+  }
+
+  // Show not found if events are loaded but event is missing
+  if (events.length > 0 && !event) {
+    return <div className="py-8 text-center text-red-500">Event not found.</div>;
+  }
+
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [reservedSeats, setReservedSeats] = useState<string[]>([]);
   const [showPayment, setShowPayment] = useState(false);
