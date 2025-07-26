@@ -178,6 +178,7 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
             details.put("eventDate", event.getEventStart());
             details.put("seat", ticket.getSeat());
             details.put("ticketId", ticket.getId());
+            details.put("transactionId", transactionId); // Add transaction ID to details
             ticketDetails.add(details);
         }
         try {
@@ -245,6 +246,7 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
             resp.put("ticket", ticket);
             return ResponseEntity.ok(resp);
         }
+        
         // Try as transactionId (multiple tickets)
         List<Ticket> tickets = ticketRepository.findByTransactionId(code);
         if (!tickets.isEmpty()) {
@@ -268,6 +270,59 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
             resp.put("transactionId", code);
             return ResponseEntity.ok(resp);
         }
+        
+        // Try to parse old QR code format (contains full ticket details)
+        if (code.contains("Ticket ID:") && code.contains("---")) {
+            try {
+                String[] ticketSections = code.split("---");
+                List<Ticket> foundTickets = new ArrayList<>();
+                Event event = null;
+                
+                for (String section : ticketSections) {
+                    if (section.trim().isEmpty()) continue;
+                    
+                    // Extract ticket ID from the section
+                    String[] lines = section.trim().split("\n");
+                    String ticketId = null;
+                    for (String line : lines) {
+                        if (line.startsWith("Ticket ID:")) {
+                            ticketId = line.substring("Ticket ID:".length()).trim();
+                            break;
+                        }
+                    }
+                    
+                    if (ticketId != null) {
+                        Optional<Ticket> ticket = ticketRepository.findById(ticketId);
+                        if (ticket.isPresent()) {
+                            foundTickets.add(ticket.get());
+                            if (event == null) {
+                                event = eventRepository.findById(ticket.get().getEventId()).orElse(null);
+                            }
+                        }
+                    }
+                }
+                
+                if (!foundTickets.isEmpty() && event != null) {
+                    List<Map<String, Object>> ticketInfos = new ArrayList<>();
+                    for (Ticket ticket : foundTickets) {
+                        Map<String, Object> info = new HashMap<>();
+                        info.put("ticketId", ticket.getId());
+                        info.put("seat", ticket.getSeat());
+                        info.put("checkedIn", ticket.isCheckedIn());
+                        ticketInfos.add(info);
+                    }
+                    Map<String, Object> resp = new HashMap<>();
+                    resp.put("type", "multiple");
+                    resp.put("event", event);
+                    resp.put("tickets", ticketInfos);
+                    resp.put("legacy", true); // Indicate this was parsed from old format
+                    return ResponseEntity.ok(resp);
+                }
+            } catch (Exception e) {
+                // If parsing fails, continue to return not found
+            }
+        }
+        
         // Not found
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("status", "Invalid or not found"));

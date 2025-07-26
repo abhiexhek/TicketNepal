@@ -35,14 +35,14 @@ public class QrCodeService {
     }
 
     public byte[] generateQrCodeForTickets(List<Map<String, String>> ticketDetails, int width, int height) throws WriterException, IOException {
-        StringBuilder sb = new StringBuilder();
-        for (Map<String, String> details : ticketDetails) {
-            sb.append("Event: ").append(details.getOrDefault("eventName", "")).append("\n");
-            sb.append("Date: ").append(details.getOrDefault("eventDate", "")).append("\n");
-            sb.append("Seat: ").append(details.getOrDefault("seat", "")).append("\n");
-            sb.append("Ticket ID: ").append(details.getOrDefault("ticketId", "")).append("\n");
-            sb.append("---\n");
+        // For transaction QR codes, we should use the transaction ID, not the full ticket details
+        // The transaction ID should be passed as the first parameter to this method
+        // For now, we'll extract it from the first ticket's details if available
+        String transactionId = ticketDetails.isEmpty() ? "" : ticketDetails.get(0).get("transactionId");
+        if (transactionId == null || transactionId.isEmpty()) {
+            // Fallback: generate a simple transaction identifier
+            transactionId = "TXN_" + System.currentTimeMillis();
         }
-        return generateQrCode(sb.toString(), width, height);
+        return generateQrCode(transactionId, width, height);
     }
 }
