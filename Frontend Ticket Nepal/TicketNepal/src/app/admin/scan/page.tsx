@@ -36,36 +36,36 @@ export default function ScanTicketPage() {
       const token = localStorage.getItem('authToken');
       // Clean the scanned value
       const cleanHint = qrHint.trim();
-      // Try group QR code validation first
-      let response = await fetch(`${API_URL}/api/tickets/validate/transaction?transactionId=${encodeURIComponent(cleanHint)}`, {
+      // Use the new unified endpoint
+      const response = await fetch(`${API_URL}/api/tickets/validate/scan?code=${encodeURIComponent(cleanHint)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (response.ok) {
         const data = await response.json();
-        setGroupResult(data);
-        setScannedTicket(null);
-        setIsValidTicket(true);
-        toast({
-          title: "Group Ticket Verified!",
-          description: `Transaction contains ${data.tickets.length} seats.`,
-          variant: "default"
-        });
-        return;
-      }
-      // If group validation fails, try single ticket validation
-      response = await fetch(`${API_URL}/api/tickets/validate?code=${encodeURIComponent(cleanHint)}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setScannedTicket(data.ticket);
-        setGroupResult(null);
-        setIsValidTicket(true);
-        toast({
-          title: "Ticket Verified!",
-          description: `Ticket ID: ${data.ticket.id}`,
-          variant: "default"
-        });
+        if (data.type === 'multiple') {
+          setGroupResult(data);
+          setScannedTicket(null);
+          setIsValidTicket(true);
+          toast({
+            title: "Group Ticket Verified!",
+            description: `Transaction contains ${data.tickets.length} seats.`,
+            variant: "default"
+          });
+        } else if (data.type === 'single') {
+          setScannedTicket(data.ticket);
+          setGroupResult(null);
+          setIsValidTicket(true);
+          toast({
+            title: "Ticket Verified!",
+            description: `Ticket ID: ${data.ticket.id}`,
+            variant: "default"
+          });
+        } else {
+          setGroupResult(null);
+          setScannedTicket(null);
+          setIsValidTicket(false);
+          toast({ title: "Invalid QR Code", description: "This QR code is not valid for ticket validation.", variant: "destructive" });
+        }
       } else {
         setGroupResult(null);
         setScannedTicket(null);

@@ -233,6 +233,46 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
         return ResponseEntity.ok(resp);
     }
 
+    @GetMapping("/validate/scan")
+    public ResponseEntity<?> validateScan(@RequestParam("code") String code) {
+        // Try as QR code hint (single ticket)
+        Optional<Ticket> ticketOpt = ticketRepository.findByQrCodeHint(code);
+        if (ticketOpt.isPresent()) {
+            Ticket ticket = ticketOpt.get();
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("type", "single");
+            resp.put("status", ticket.isCheckedIn() ? "Already checked-in" : "Valid ticket");
+            resp.put("ticket", ticket);
+            return ResponseEntity.ok(resp);
+        }
+        // Try as transactionId (multiple tickets)
+        List<Ticket> tickets = ticketRepository.findByTransactionId(code);
+        if (!tickets.isEmpty()) {
+            Event event = eventRepository.findById(tickets.get(0).getEventId()).orElse(null);
+            if (event == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("status", "Event not found"));
+            }
+            List<Map<String, Object>> ticketInfos = new ArrayList<>();
+            for (Ticket ticket : tickets) {
+                Map<String, Object> info = new HashMap<>();
+                info.put("ticketId", ticket.getId());
+                info.put("seat", ticket.getSeat());
+                info.put("checkedIn", ticket.isCheckedIn());
+                ticketInfos.add(info);
+            }
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("type", "multiple");
+            resp.put("event", event);
+            resp.put("tickets", ticketInfos);
+            resp.put("transactionId", code);
+            return ResponseEntity.ok(resp);
+        }
+        // Not found
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("status", "Invalid or not found"));
+    }
+
     // --- Check-in endpoint: marks ticket as checked in ---
     @PostMapping("/checkin")
     // Only allow staff, organizer, admin (optional: add @PreAuthorize if using roles)
