@@ -194,9 +194,9 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
 
     @GetMapping("/validate")
     public ResponseEntity<?> validateQr(@RequestParam("code") String qrHint) {
-        Optional<Ticket> ticketOpt = ticketRepository.findByQrCodeHint(qrHint);
-        if (ticketOpt.isPresent()) {
-            Ticket ticket = ticketOpt.get();
+        List<Ticket> qrHintTickets = ticketRepository.findByQrCodeHint(qrHint);
+        if (!qrHintTickets.isEmpty()) {
+            Ticket ticket = qrHintTickets.get(0);
             Map<String, Object> resp = new HashMap<>();
             resp.put("status", ticket.isCheckedIn() ? "Already checked-in" : "Valid ticket");
             resp.put("ticket", ticket);
@@ -236,39 +236,38 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
 
     @GetMapping("/validate/scan")
     public ResponseEntity<?> validateScan(@RequestParam("code") String code) {
-        // Try as QR code hint (single ticket)
-        Optional<Ticket> ticketOpt = ticketRepository.findByQrCodeHint(code);
-        if (ticketOpt.isPresent()) {
-            Ticket ticket = ticketOpt.get();
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("type", "single");
-            resp.put("status", ticket.isCheckedIn() ? "Already checked-in" : "Valid ticket");
-            resp.put("ticket", ticket);
-            return ResponseEntity.ok(resp);
-        }
-        
-        // Try as transactionId (multiple tickets)
-        List<Ticket> tickets = ticketRepository.findByTransactionId(code);
-        if (!tickets.isEmpty()) {
-            Event event = eventRepository.findById(tickets.get(0).getEventId()).orElse(null);
-            if (event == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("status", "Event not found"));
+        // Try as QR code hint (single or group ticket)
+        List<Ticket> qrHintTickets = ticketRepository.findByQrCodeHint(code);
+        if (!qrHintTickets.isEmpty()) {
+            if (qrHintTickets.size() == 1) {
+                Ticket ticket = qrHintTickets.get(0);
+                Map<String, Object> resp = new HashMap<>();
+                resp.put("type", "single");
+                resp.put("status", ticket.isCheckedIn() ? "Already checked-in" : "Valid ticket");
+                resp.put("ticket", ticket);
+                return ResponseEntity.ok(resp);
+            } else {
+                // Multiple tickets with same QR code hint (group/transaction)
+                Event event = eventRepository.findById(qrHintTickets.get(0).getEventId()).orElse(null);
+                if (event == null) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(Map.of("status", "Event not found"));
+                }
+                List<Map<String, Object>> ticketInfos = new ArrayList<>();
+                for (Ticket ticket : qrHintTickets) {
+                    Map<String, Object> info = new HashMap<>();
+                    info.put("ticketId", ticket.getId());
+                    info.put("seat", ticket.getSeat());
+                    info.put("checkedIn", ticket.isCheckedIn());
+                    ticketInfos.add(info);
+                }
+                Map<String, Object> resp = new HashMap<>();
+                resp.put("type", "multiple");
+                resp.put("event", event);
+                resp.put("tickets", ticketInfos);
+                resp.put("transactionId", code);
+                return ResponseEntity.ok(resp);
             }
-            List<Map<String, Object>> ticketInfos = new ArrayList<>();
-            for (Ticket ticket : tickets) {
-                Map<String, Object> info = new HashMap<>();
-                info.put("ticketId", ticket.getId());
-                info.put("seat", ticket.getSeat());
-                info.put("checkedIn", ticket.isCheckedIn());
-                ticketInfos.add(info);
-            }
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("type", "multiple");
-            resp.put("event", event);
-            resp.put("tickets", ticketInfos);
-            resp.put("transactionId", code);
-            return ResponseEntity.ok(resp);
         }
         
         // Try to parse old QR code format (contains full ticket details)

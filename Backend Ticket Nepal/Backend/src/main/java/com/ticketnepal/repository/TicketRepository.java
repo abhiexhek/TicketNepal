@@ -11,7 +11,7 @@ import java.util.Optional;
 public interface TicketRepository extends MongoRepository<Ticket, String> {
     List<Ticket> findByUserId(String userId);
     List<Ticket> findByEventId(String eventId);
-    Optional<Ticket> findByQrCodeHint(String qrCodeHint); // For QR code validation
+    List<Ticket> findByQrCodeHint(String qrCodeHint); // For QR code validation
 
     Optional<Ticket> findByEventIdAndSeat(String eventId, String seat);
 
