@@ -35,6 +35,9 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
     setLocation("");
     setSearch("");
   };
+  
+  // Check if any filters are applied
+  const hasActiveFilters = date || category || location.trim() !== "" || search.trim() !== "";
   const [categories, setCategories] = useState<string[]>([]);
   const { currentUser } = useContext(UserContext);
 
@@ -77,7 +80,7 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
 
   React.useEffect(() => {
     onFilterChange({
-      category: category && category.trim() !== "" ? category : undefined,
+      category: category && category !== "all" ? category : undefined,
       eventStart: date ? date.toISOString().split('T')[0] : undefined,
       location: location || undefined,
       search: search || undefined,
@@ -95,7 +98,7 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Categories</SelectItem>
+              <SelectItem value="all">All Categories</SelectItem>
               {categories.map((cat) => (
                 <SelectItem key={cat} value={cat}>{cat}</SelectItem>
               ))}
@@ -145,16 +148,18 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
         </div>
       </div>
       
-      {/* Clear Filters Button */}
-      <div className="mt-4 flex justify-end">
-        <Button 
-          variant="outline" 
-          onClick={clearFilters}
-          className="text-sm"
-        >
-          Clear All Filters
-        </Button>
-      </div>
+      {/* Clear Filters Button - Only show when filters are active */}
+      {hasActiveFilters && (
+        <div className="mt-4 flex justify-end">
+          <Button 
+            variant="outline" 
+            onClick={clearFilters}
+            className="text-sm"
+          >
+            Clear All Filters
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

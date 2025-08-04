@@ -111,7 +111,7 @@ public class EventController {
             events = eventRepository.findAll();
             
             // Apply filters
-            if (category != null && !category.isEmpty() && !category.trim().isEmpty()) {
+            if (category != null && !category.isEmpty() && !category.trim().isEmpty() && !"all".equals(category)) {
                 events = events.stream()
                     .filter(e -> category.equals(e.getCategory()))
                     .collect(Collectors.toList());
