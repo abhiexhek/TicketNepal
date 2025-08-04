@@ -15,4 +15,4 @@ FROM node:20-alpine
 WORKDIR /app
 COPY --from=build /app ./
 EXPOSE 3000
-CMD ["sh", "-c", "next start -p $PORT"] 
+CMD ["sh", "-c", "npm start -- -p $PORT"] 
