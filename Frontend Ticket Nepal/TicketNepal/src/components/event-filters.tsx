@@ -81,7 +81,7 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
   React.useEffect(() => {
     onFilterChange({
       category: category && category !== "all" ? category : undefined,
-      eventStart: date ? date.toISOString().split('T')[0] : undefined,
+      eventStart: date ? format(date, 'yyyy-MM-dd') : undefined,
       location: location || undefined,
       search: search || undefined,
     });

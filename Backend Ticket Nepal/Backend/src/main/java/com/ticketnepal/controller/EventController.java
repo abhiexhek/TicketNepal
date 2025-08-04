@@ -145,9 +145,15 @@ public class EventController {
                             String eventStartDate = e.getEventStart().split("T")[0];
                             String eventEndDate = e.getEventEnd().split("T")[0];
                             
+                            // Log for debugging
+                            logger.debug("Date filter - Selected: {}, Event: {} to {}", eventStart, eventStartDate, eventEndDate);
+                            
                             // Check if selected date falls within the event date range (inclusive)
-                            return eventStart.compareTo(eventStartDate) >= 0 && eventStart.compareTo(eventEndDate) <= 0;
+                            boolean isInRange = eventStart.compareTo(eventStartDate) >= 0 && eventStart.compareTo(eventEndDate) <= 0;
+                            logger.debug("Event {} is in range: {}", e.getName(), isInRange);
+                            return isInRange;
                         } catch (Exception ex) {
+                            logger.error("Error parsing date for event: {}", e.getName(), ex);
                             return false;
                         }
                     })
