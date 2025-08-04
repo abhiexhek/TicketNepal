@@ -21,6 +21,7 @@ import com.ticketnepal.repository.StaffApplicationRepository;
 import java.util.UUID;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.OffsetDateTime;
@@ -100,23 +101,56 @@ public class EventController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) String name,
-            @RequestParam(required = false) String organizer
+            @RequestParam(required = false) String organizer,
+            @RequestParam(required = false) String eventStart
     ) {
         try {
             List<Event> events;
-            if (category != null && location != null) {
-                events = eventRepository.findByCategoryAndLocationContainingIgnoreCase(category, location);
-            } else if (category != null) {
-                events = eventRepository.findByCategory(category);
-            } else if (location != null) {
-                events = eventRepository.findByLocationContainingIgnoreCase(location);
-            } else if (name != null) {
-                events = eventRepository.findByNameContainingIgnoreCase(name);
-            } else if (organizer != null) {
-                events = eventRepository.findByOrganizerContainingIgnoreCase(organizer);
-            } else {
-                events = eventRepository.findAll();
+            
+            // Start with all events
+            events = eventRepository.findAll();
+            
+            // Apply filters
+            if (category != null && !category.isEmpty()) {
+                events = events.stream()
+                    .filter(e -> category.equals(e.getCategory()))
+                    .collect(Collectors.toList());
             }
+            
+            if (location != null && !location.isEmpty()) {
+                events = events.stream()
+                    .filter(e -> e.getLocation() != null && e.getLocation().toLowerCase().contains(location.toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+            
+            if (name != null && !name.isEmpty()) {
+                events = events.stream()
+                    .filter(e -> e.getName() != null && e.getName().toLowerCase().contains(name.toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+            
+            if (organizer != null && !organizer.isEmpty()) {
+                events = events.stream()
+                    .filter(e -> e.getOrganizer() != null && e.getOrganizer().toLowerCase().contains(organizer.toLowerCase()))
+                    .collect(Collectors.toList());
+            }
+            
+            // Date filtering - filter by day only (ignore time)
+            if (eventStart != null && !eventStart.isEmpty()) {
+                events = events.stream()
+                    .filter(e -> {
+                        if (e.getEventStart() == null) return false;
+                        try {
+                            // Parse the event start date and compare only the date part
+                            String eventDate = e.getEventStart().split("T")[0]; // Get YYYY-MM-DD part
+                            return eventDate.equals(eventStart);
+                        } catch (Exception ex) {
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
+            }
+            
             // Filter out deleted events
             events.removeIf(e -> Boolean.TRUE.equals(e.getDeleted()));
             return ResponseEntity.ok(events);

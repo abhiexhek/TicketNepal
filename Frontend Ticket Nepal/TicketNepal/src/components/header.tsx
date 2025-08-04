@@ -2,9 +2,8 @@
 "use client"
 
 import Link from "next/link"
-import { Flame, Search, Ticket, User as UserIcon, Shield, LogIn, UserPlus, Scan, Briefcase } from "lucide-react"
+import { Flame, Ticket, User as UserIcon, Shield, LogIn, UserPlus, Scan, Briefcase } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { usePathname } from "next/navigation"
@@ -65,11 +64,6 @@ export function Header() {
           ))}
         </nav>
         <div className="flex flex-1 items-center justify-end gap-2 md:gap-4">
-          <div className="relative hidden sm:block w-full max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search events..." className="pl-9" />
-          </div>
-          
           {currentUser ? (
              <DropdownMenu>
               <DropdownMenuTrigger asChild>

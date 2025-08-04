@@ -127,9 +127,9 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
           />
         </div>
         <div className="space-y-2 col-span-2">
-          <label className="text-sm font-medium">Search</label>
+          <label className="text-sm font-medium">Search Event Name</label>
           <Input
-            placeholder="Search by event name, location, or organizer"
+            placeholder="Search by event name only"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
