@@ -111,7 +111,7 @@ public class EventController {
             events = eventRepository.findAll();
             
             // Apply filters
-            if (category != null && !category.isEmpty()) {
+            if (category != null && !category.isEmpty() && !category.trim().isEmpty()) {
                 events = events.stream()
                     .filter(e -> category.equals(e.getCategory()))
                     .collect(Collectors.toList());
@@ -135,15 +135,18 @@ public class EventController {
                     .collect(Collectors.toList());
             }
             
-            // Date filtering - filter by day only (ignore time)
+            // Date filtering - check if selected date falls within event date range
             if (eventStart != null && !eventStart.isEmpty()) {
                 events = events.stream()
                     .filter(e -> {
-                        if (e.getEventStart() == null) return false;
+                        if (e.getEventStart() == null || e.getEventEnd() == null) return false;
                         try {
-                            // Parse the event start date and compare only the date part
-                            String eventDate = e.getEventStart().split("T")[0]; // Get YYYY-MM-DD part
-                            return eventDate.equals(eventStart);
+                            // Parse event start and end dates (get YYYY-MM-DD part)
+                            String eventStartDate = e.getEventStart().split("T")[0];
+                            String eventEndDate = e.getEventEnd().split("T")[0];
+                            
+                            // Check if selected date falls within the event date range (inclusive)
+                            return eventStart.compareTo(eventStartDate) >= 0 && eventStart.compareTo(eventEndDate) <= 0;
                         } catch (Exception ex) {
                             return false;
                         }

@@ -27,6 +27,14 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
   const [category, setCategory] = React.useState<string | undefined>();
   const [location, setLocation] = React.useState<string>("");
   const [search, setSearch] = React.useState<string>("");
+  
+  // Function to clear all filters
+  const clearFilters = () => {
+    setDate(undefined);
+    setCategory(undefined);
+    setLocation("");
+    setSearch("");
+  };
   const [categories, setCategories] = useState<string[]>([]);
   const { currentUser } = useContext(UserContext);
 
@@ -69,7 +77,7 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
 
   React.useEffect(() => {
     onFilterChange({
-      category,
+      category: category && category.trim() !== "" ? category : undefined,
       eventStart: date ? date.toISOString().split('T')[0] : undefined,
       location: location || undefined,
       search: search || undefined,
@@ -82,11 +90,12 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
         <div className="space-y-2">
           <label className="text-sm font-medium">Category</label>
-          <Select onValueChange={setCategory}>
+          <Select onValueChange={setCategory} value={category}>
             <SelectTrigger>
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="">All Categories</SelectItem>
               {categories.map((cat) => (
                 <SelectItem key={cat} value={cat}>{cat}</SelectItem>
               ))}
@@ -134,6 +143,17 @@ export function EventFilters({ onFilterChange }: EventFiltersProps) {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
+      </div>
+      
+      {/* Clear Filters Button */}
+      <div className="mt-4 flex justify-end">
+        <Button 
+          variant="outline" 
+          onClick={clearFilters}
+          className="text-sm"
+        >
+          Clear All Filters
+        </Button>
       </div>
     </div>
   );
