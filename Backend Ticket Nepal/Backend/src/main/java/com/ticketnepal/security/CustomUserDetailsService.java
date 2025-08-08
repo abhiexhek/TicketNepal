@@ -20,7 +20,7 @@ public UserDetails loadUserByUsername(String identifier) throws UsernameNotFound
     return org.springframework.security.core.userdetails.User
             .withUsername(user.getEmail())
             .password(user.getPassword())
-            .roles(user.getRole())
+            .roles(user.getRole().toUpperCase())
             .build();
 }
 

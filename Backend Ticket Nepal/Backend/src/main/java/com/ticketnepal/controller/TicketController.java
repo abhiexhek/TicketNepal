@@ -391,23 +391,7 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
         }
 
         if (!authorized) {
-            // Return detailed error for debugging
-            Map<String, Object> debugInfo = new HashMap<>();
-            debugInfo.put("error", "Not authorized to check in for this event");
-            debugInfo.put("userRole", currentUser.getRole());
-            debugInfo.put("isAdmin", isAdmin);
-            debugInfo.put("isOrganizer", isOrganizer);
-            debugInfo.put("isStaff", isStaff);
-            debugInfo.put("eventOrganizer", event.getOrganizer());
-            debugInfo.put("currentUserId", currentUser.getId());
-            if (isStaff) {
-                Optional<StaffApplication> appOpt = staffApplicationRepository.findByEventIdAndStaffId(event.getId(), currentUser.getId());
-                debugInfo.put("staffApplicationExists", appOpt.isPresent());
-                if (appOpt.isPresent()) {
-                    debugInfo.put("staffApplicationStatus", appOpt.get().getStatus());
-                }
-            }
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(debugInfo);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Not authorized to check in for this event"));
         }
 
         if (ticket.isCheckedIn()) {
@@ -416,23 +400,5 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
         ticket.setCheckedIn(true);
         ticketRepository.save(ticket);
         return ResponseEntity.ok(Map.of("message", "Ticket checked in successfully", "ticket", ticket));
-    }
-
-    // Debug endpoint to check current user's roles and permissions
-    @GetMapping("/debug/auth")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> debugAuth() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentUserEmail = authentication.getName();
-        User currentUser = userRepository.findByEmail(currentUserEmail).orElse(null);
-        
-        Map<String, Object> debugInfo = new HashMap<>();
-        debugInfo.put("userEmail", currentUserEmail);
-        debugInfo.put("userRole", currentUser != null ? currentUser.getRole() : "N/A");
-        debugInfo.put("authorities", authentication.getAuthorities().stream()
-            .map(Object::toString)
-            .collect(Collectors.toList()));
-        
-        return ResponseEntity.ok(debugInfo);
     }
 }

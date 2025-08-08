@@ -41,6 +41,35 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('newest');
   const { toast } = useToast();
 
+  const debugEvents = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+      const response = await fetch(`${API_URL}/api/events/debug/events`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Debug Events:', data);
+        toast({
+          title: "Events Debug",
+          description: `Total: ${data.totalEvents}, Current time: ${data.currentTime}`,
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "Debug Failed",
+          description: `Status: ${response.status}`,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Debug error:', error);
+      toast({
+        title: "Debug Error",
+        description: "Could not check events.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Fetch all events on initial load
   useEffect(() => {
     const fetchEvents = async () => {
@@ -97,6 +126,9 @@ export default function Home() {
           const validEventsFiltered = validEvents.filter(Boolean);
           setEvents(validEventsFiltered);
           
+          console.log('Total events fetched:', data.length);
+          console.log('Valid events after filtering:', validEventsFiltered.length);
+          
           // Get featured events (newest 3 events)
           const sortedByDate = [...validEventsFiltered].sort((a, b) => {
             try {
@@ -104,11 +136,18 @@ export default function Home() {
               const dateB = new Date(b.eventStart);
               return dateB.getTime() - dateA.getTime();
             } catch (error) {
+              console.warn('Failed to sort events by date:', error);
               return 0;
             }
           });
-          setFeaturedEvents(sortedByDate.slice(0, 3));
-          setFilteredEvents(sortedByDate);
+          
+          // If no events with valid dates, just take the first 3 events
+          const featured = sortedByDate.length > 0 ? sortedByDate.slice(0, 3) : validEventsFiltered.slice(0, 3);
+          console.log('Featured events selected:', featured.length);
+          console.log('Featured events:', featured.map(e => ({ name: e.name, date: e.eventStart })));
+          
+          setFeaturedEvents(featured);
+          setFilteredEvents(sortedByDate.length > 0 ? sortedByDate : validEventsFiltered);
         } else {
           setEvents([]);
           toast({
@@ -257,6 +296,9 @@ export default function Home() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
+              <Button onClick={debugEvents} variant="outline" size="sm">
+                Debug Events
+              </Button>
             </div>
             {loading ? (
               <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -284,7 +326,9 @@ export default function Home() {
                           className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300" />
+                        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
+                          <Calendar className="h-12 w-12 text-slate-400" />
+                        </div>
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                       </div>
@@ -336,10 +380,22 @@ export default function Home() {
                 <CardContent className="flex flex-col items-center justify-center py-16">
                   <Star className="h-12 w-12 text-yellow-500 mb-3" />
                   <h3 className="text-xl font-semibold mb-2">No featured events</h3>
-                  <p className="text-muted-foreground mb-4">New events will appear here automatically.</p>
-                  <Button asChild>
-                    <Link href="#events">Browse All Events</Link>
-                  </Button>
+                  <p className="text-muted-foreground mb-4">
+                    {events.length === 0 
+                      ? "No events have been created yet. Be the first to create an amazing event!"
+                      : "No upcoming events available. Check back soon for new events!"
+                    }
+                  </p>
+                  <div className="flex gap-4">
+                    <Button asChild>
+                      <Link href="#events">Browse All Events</Link>
+                    </Button>
+                    {events.length === 0 && (
+                      <Button asChild variant="outline">
+                        <Link href="/auth/signup">Create Your First Event</Link>
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}
