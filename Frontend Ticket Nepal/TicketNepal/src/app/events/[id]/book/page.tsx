@@ -11,7 +11,8 @@ import { Header } from "@/components/header";
 import { SeatMap } from "@/components/seat-map";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CreditCard } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, CreditCard, AlertCircle, Calendar } from "lucide-react";
 import { EventContext } from "@/context/EventContext";
 import { UserContext } from "@/context/UserContext";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +40,7 @@ export default function BookTicketPage() {
   const [reservedSeats, setReservedSeats] = useState<string[]>([]);
   const [showPayment, setShowPayment] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
 
   const form = useForm<z.infer<typeof paymentFormSchema>>({
     resolver: zodResolver(paymentFormSchema),
@@ -49,6 +51,25 @@ export default function BookTicketPage() {
       nameOnCard: "",
     },
   });
+
+  // Check if event is expired
+  useEffect(() => {
+    if (event) {
+      const now = new Date();
+      const eventEnd = event.eventEnd ? new Date(event.eventEnd) : null;
+      const isExpiredEvent = eventEnd ? now > eventEnd : false;
+      setIsExpired(isExpiredEvent);
+      
+      if (isExpiredEvent) {
+        toast({
+          title: "Event has ended",
+          description: "This event has already ended and tickets are no longer available.",
+          variant: "destructive"
+        });
+        router.push(`/events/${event.id}`);
+      }
+    }
+  }, [event, router, toast]);
 
   // Fetch reserved seats for the event
   const fetchReservedSeats = async () => {
@@ -102,9 +123,50 @@ export default function BookTicketPage() {
   if (!event) {
     notFound();
   }
+  
   // Prevent staff/organizer from seeing booking UI
   if (currentUser && currentUser.role !== "Customer") {
     return null;
+  }
+
+  // Prevent booking if event is expired
+  if (isExpired) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 container py-4 sm:py-8 md:py-12">
+          <Button asChild variant="ghost" className="mb-4 w-full sm:w-auto">
+            <Link href={`/events/${event?.id}`}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to event
+            </Link>
+          </Button>
+          <div className="w-full max-w-4xl mx-auto px-2 sm:px-4">
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <AlertCircle className="h-16 w-16 text-red-500 mb-4" />
+                <h2 className="text-2xl font-bold mb-2">Event Has Ended</h2>
+                <p className="text-muted-foreground text-center mb-6 max-w-md">
+                  This event has already ended and tickets are no longer available for purchase.
+                </p>
+                <div className="flex gap-4">
+                  <Button asChild>
+                    <Link href="/">
+                      Browse Other Events
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link href={`/events/${event.id}`}>
+                      View Event Details
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   const handleToggleSeat = (seatId: string) => {
@@ -189,7 +251,7 @@ export default function BookTicketPage() {
   console.log('Reserved seats:', reservedSeats);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
       <Header />
       <main className="flex-1 container py-4 sm:py-8 md:py-12">
         <Button asChild variant="ghost" className="mb-4 w-full sm:w-auto">
@@ -199,12 +261,20 @@ export default function BookTicketPage() {
           </Link>
         </Button>
         <div className="w-full max-w-4xl mx-auto px-2 sm:px-4">
-          <Card>
+          <Card className="shadow-xl border-0">
             <CardHeader>
-              <CardTitle>Book Your Ticket</CardTitle>
-              <CardDescription>
-                Select your seats and proceed to payment to confirm your booking.
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl">Book Your Ticket</CardTitle>
+                  <CardDescription className="text-base">
+                    Select your seats and proceed to payment to confirm your booking.
+                  </CardDescription>
+                </div>
+                <Badge className="bg-green-100 text-green-700">
+                  <Calendar className="mr-1 h-3 w-3" />
+                  Active Event
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="mb-6">

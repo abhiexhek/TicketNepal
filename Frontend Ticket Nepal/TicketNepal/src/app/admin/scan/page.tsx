@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, UserCheck, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -10,7 +10,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { Ticket as TicketType } from '@/lib/types';
 import { BrowserQRCodeReader } from '@zxing/browser';
 
-interface VerifiedTicket extends TicketType {}
+interface VerifiedTicket extends TicketType {
+  checkedIn?: boolean;
+  qrCodeHint?: string;
+}
 
 interface GroupValidationResult {
   event: any;
@@ -28,6 +31,8 @@ export default function ScanTicketPage() {
   const [isValidTicket, setIsValidTicket] = useState<boolean | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | undefined>(undefined);
   const [groupResult, setGroupResult] = useState<GroupValidationResult | null>(null);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [checkedInTickets, setCheckedInTickets] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const verifyTicket = useCallback(async (qrHint: string) => {
@@ -80,6 +85,113 @@ export default function ScanTicketPage() {
     }
   }, [toast]);
 
+  const checkInTicket = async (ticketId: string, qrCodeHint?: string) => {
+    setIsCheckingIn(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+      const token = localStorage.getItem('authToken');
+      
+      const response = await fetch(`${API_URL}/api/tickets/checkin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          ticketId: ticketId,
+          ...(qrCodeHint && { qrCodeHint: qrCodeHint })
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCheckedInTickets(prev => new Set(prev).add(ticketId));
+        toast({
+          title: "Ticket Checked In!",
+          description: data.message || "Ticket has been successfully checked in.",
+          variant: "default"
+        });
+        
+        // Refresh the verification data to show updated checked-in status
+        if (qrCodeHint) {
+          verifyTicket(qrCodeHint);
+        }
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Check-in Failed",
+          description: errorData.error || "Could not check in ticket.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Could not connect to server.",
+        variant: "destructive"
+      });
+    }
+    setIsCheckingIn(false);
+  };
+
+  const checkInGroupTickets = async () => {
+    if (!groupResult) return;
+    
+    setIsCheckingIn(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+      const token = localStorage.getItem('authToken');
+      
+      // Check in all tickets in the group
+      const checkInPromises = groupResult.tickets
+        .filter(ticket => !ticket.checkedIn)
+        .map(ticket => 
+          fetch(`${API_URL}/api/tickets/checkin`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+              ticketId: ticket.ticketId,
+              qrCodeHint: groupResult.transactionId
+            }),
+          })
+        );
+
+      const responses = await Promise.all(checkInPromises);
+      const allSuccessful = responses.every(response => response.ok);
+      
+      if (allSuccessful) {
+        // Mark all tickets as checked in
+        const ticketIds = groupResult.tickets.map(t => t.ticketId);
+        setCheckedInTickets(prev => new Set([...prev, ...ticketIds]));
+        
+        toast({
+          title: "Group Checked In!",
+          description: `All ${groupResult.tickets.length} tickets have been checked in.`,
+          variant: "default"
+        });
+        
+        // Refresh the verification data
+        verifyTicket(groupResult.transactionId);
+      } else {
+        toast({
+          title: "Check-in Failed",
+          description: "Some tickets could not be checked in.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Could not connect to server.",
+        variant: "destructive"
+      });
+    }
+    setIsCheckingIn(false);
+  };
+
   useEffect(() => {
     if (!isScanning) return;
     let active = true;
@@ -130,48 +242,34 @@ export default function ScanTicketPage() {
     getCameraAndScan();
     return () => {
       active = false;
-      if (qrReaderRef.current) {
-        if (typeof (qrReaderRef.current as any).reset === 'function') {
-          (qrReaderRef.current as any).reset();
-        } else if (typeof (qrReaderRef.current as any).stopContinuousDecode === 'function') {
-          (qrReaderRef.current as any).stopContinuousDecode();
-        }
-        qrReaderRef.current = null;
-      }
-      if (videoRef.current && videoRef.current.srcObject) {
-        (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-      }
     };
-  }, [isScanning, toast, verifyTicket]);
+  }, [isScanning, verifyTicket, toast]);
 
   const handleManualScan = () => {
-    if (scanResult) {
-      verifyTicket(scanResult);
+    const manualCode = prompt("Enter QR code manually:");
+    if (manualCode) {
+      verifyTicket(manualCode);
     }
   };
 
-  return (
-    <div className="w-full max-w-2xl mx-auto py-6 px-2 sm:px-4">
-      <Link href="/admin">
-        <Button variant="ghost" className="mb-4 w-full sm:w-auto">
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
-        </Button>
-      </Link>
-      <h1 className="text-2xl font-bold mb-6 text-center">Scan Ticket QR Code</h1>
+  const resetScan = () => {
+    setScanResult(null);
+    setIsValidTicket(null);
+    setScannedTicket(null);
+    setGroupResult(null);
+    setCheckedInTickets(new Set());
+  };
 
-      {/* Manual QR input (for testing without real scanner) */}
-      <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-6 w-full">
-        <input
-          type="text"
-          value={scanResult ?? ""}
-          onChange={e => setScanResult(e.target.value)}
-          placeholder="Paste QR code hint here or scan"
-          className="p-2 border rounded w-full"
-        />
-        <Button onClick={handleManualScan} disabled={!scanResult} className="w-full sm:w-auto mt-2 sm:mt-0">
-          Scan
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="flex items-center gap-4 mb-6">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/admin">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Link>
         </Button>
+        <h1 className="text-2xl font-bold">QR Code Scanner</h1>
       </div>
 
       {/* Scanner controls */}
@@ -199,6 +297,14 @@ export default function ScanTicketPage() {
             Close Scanner
           </Button>
         )}
+        <Button onClick={handleManualScan} variant="outline" className="w-full sm:w-auto">
+          Manual Entry
+        </Button>
+        {(isValidTicket !== null) && (
+          <Button onClick={resetScan} variant="outline" className="w-full sm:w-auto">
+            Scan New Ticket
+          </Button>
+        )}
       </div>
       {scanningError && <div className="text-red-500 text-center mb-4">{scanningError}</div>}
 
@@ -220,15 +326,37 @@ export default function ScanTicketPage() {
                     <div className="font-semibold mb-2">Event: {groupResult.event?.name}</div>
                     <div className="mb-2">Transaction ID: {groupResult.transactionId}</div>
                     <div className="font-semibold mb-1">Seats:</div>
-                    <ul className="text-sm">
+                    <ul className="text-sm mb-4">
                       {groupResult.tickets.map((t) => (
-                        <li key={t.ticketId} className="flex justify-between">
+                        <li key={t.ticketId} className="flex justify-between items-center py-1">
                           <span>Seat: <b>{t.seat}</b></span>
-                          <span className="text-xs text-muted-foreground">Checked in: {t.checkedIn ? 'Yes' : 'No'}</span>
-                          <span className="text-xs text-muted-foreground">Ticket ID: {t.ticketId}</span>
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            t.checkedIn || checkedInTickets.has(t.ticketId) 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {t.checkedIn || checkedInTickets.has(t.ticketId) ? '✓ Checked In' : 'Pending Check-in'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">ID: {t.ticketId}</span>
                         </li>
                       ))}
                     </ul>
+                    {groupResult.tickets.some(t => !t.checkedIn && !checkedInTickets.has(t.ticketId)) && (
+                      <Button 
+                        onClick={checkInGroupTickets} 
+                        disabled={isCheckingIn}
+                        className="w-full"
+                      >
+                        {isCheckingIn ? (
+                          <>Checking In...</>
+                        ) : (
+                          <>
+                            <Users className="mr-2 h-4 w-4" />
+                            Check In All Tickets
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 )}
                 {scannedTicket && (
@@ -237,7 +365,35 @@ export default function ScanTicketPage() {
                     <div><strong>User Name:</strong> {scannedTicket.userName}</div>
                     <div><strong>Seat:</strong> {scannedTicket.seat}</div>
                     <div><strong>Event ID:</strong> {String(scannedTicket.eventId)}</div>
-                    {/* Always use String(id) when passing IDs */}
+                    <div className="mt-2">
+                      <strong>Status:</strong> 
+                      <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                        scannedTicket.checkedIn || checkedInTickets.has(scannedTicket.id)
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {scannedTicket.checkedIn || checkedInTickets.has(scannedTicket.id) 
+                          ? '✓ Checked In' 
+                          : 'Pending Check-in'
+                        }
+                      </span>
+                    </div>
+                    {!scannedTicket.checkedIn && !checkedInTickets.has(scannedTicket.id) && (
+                      <Button 
+                        onClick={() => checkInTicket(scannedTicket.id, scannedTicket.qrCodeHint)}
+                        disabled={isCheckingIn}
+                        className="w-full mt-3"
+                      >
+                        {isCheckingIn ? (
+                          <>Checking In...</>
+                        ) : (
+                          <>
+                            <UserCheck className="mr-2 h-4 w-4" />
+                            Check In Ticket
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 )}
               </AlertDescription>

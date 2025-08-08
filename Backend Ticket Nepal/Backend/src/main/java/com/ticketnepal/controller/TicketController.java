@@ -18,6 +18,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.io.IOException;
 import java.util.*;
+import com.ticketnepal.repository.StaffApplicationRepository;
+import com.ticketnepal.model.StaffApplication;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @RestController
 @RequestMapping("/api/tickets")
@@ -33,6 +37,9 @@ public class TicketController {
     private EmailService emailService;
     @Autowired
     private QrCodeService qrCodeService;
+
+    @Autowired
+    private StaffApplicationRepository staffApplicationRepository;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('ORGANIZER')")
@@ -330,7 +337,7 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
 
     // --- Check-in endpoint: marks ticket as checked in ---
     @PostMapping("/checkin")
-    // Only allow staff, organizer, admin (optional: add @PreAuthorize if using roles)
+    @PreAuthorize("hasRole('ADMIN') or hasRole('ORGANIZER') or hasRole('STAFF')")
     public ResponseEntity<?> checkInTicket(@RequestBody Map<String, String> body) {
         String ticketId = body.get("ticketId");
         String qrCodeHint = body.get("qrCodeHint");
@@ -347,6 +354,45 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Ticket not found"));
         }
         Ticket ticket = ticketOpt.get();
+
+        // Authorization: Only ADMIN, event ORGANIZER, or APPROVED STAFF for this event
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getAuthorities() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Not authorized"));
+        }
+
+        // Load current user by email (username is set to email in CustomUserDetailsService)
+        String currentUserEmail = authentication.getName();
+        User currentUser = userRepository.findByEmail(currentUserEmail).orElse(null);
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "User not found"));
+        }
+
+        Event event = eventRepository.findById(ticket.getEventId()).orElse(null);
+        if (event == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Event not found"));
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        boolean isOrganizer = authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ORGANIZER"));
+        boolean isStaff = authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_STAFF"));
+
+        boolean authorized = false;
+        if (isAdmin) {
+            authorized = true;
+        } else if (isOrganizer) {
+            // Organizer must be the event owner
+            authorized = event.getOrganizer() != null && event.getOrganizer().equals(currentUser.getId());
+        } else if (isStaff) {
+            // Staff must be APPROVED for this specific event
+            Optional<StaffApplication> appOpt = staffApplicationRepository.findByEventIdAndStaffId(event.getId(), currentUser.getId());
+            authorized = appOpt.isPresent() && "APPROVED".equalsIgnoreCase(appOpt.get().getStatus());
+        }
+
+        if (!authorized) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Not authorized to check in for this event"));
+        }
+
         if (ticket.isCheckedIn()) {
             return ResponseEntity.ok(Map.of("message", "Ticket already checked in", "ticket", ticket));
         }
