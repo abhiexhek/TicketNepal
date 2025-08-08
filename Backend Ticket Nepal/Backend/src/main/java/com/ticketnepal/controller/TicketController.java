@@ -341,7 +341,6 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
     @PreAuthorize("hasRole('ADMIN') or hasRole('ORGANIZER') or hasRole('STAFF')")
     public ResponseEntity<?> checkInTicket(@RequestBody Map<String, String> body) {
         String ticketId = body.get("ticketId");
-        String qrCodeHint = body.get("qrCodeHint");
         
         if (ticketId == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Ticket ID is required"));

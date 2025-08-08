@@ -39,14 +39,17 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [apiStatus, setApiStatus] = useState('idle');
   const { toast } = useToast();
 
   // Fetch all events on initial load
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
+      setApiStatus('loading');
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+        console.log('Fetching from API:', `${API_URL}/api/events`);
         const response = await fetch(`${API_URL}/api/events`);
         if (response.ok) {
           const data = await response.json();
@@ -95,6 +98,8 @@ export default function Home() {
           );
           
           const validEventsFiltered = validEvents.filter(Boolean);
+          console.log('Valid events filtered:', validEventsFiltered.length, validEventsFiltered);
+          console.log('Raw API response:', data);
           setEvents(validEventsFiltered);
           
           // Get featured events (newest 3 events)
@@ -108,21 +113,28 @@ export default function Home() {
             }
           });
           
+          console.log('Sorted events by date:', sortedByDate.length, sortedByDate);
+          
           // If no events with valid dates, just take the first 3 events
           const featured = sortedByDate.length > 0 ? sortedByDate.slice(0, 3) : validEventsFiltered.slice(0, 3);
           
+          console.log('Featured events selected:', featured.length, featured);
           setFeaturedEvents(featured);
           setFilteredEvents(sortedByDate.length > 0 ? sortedByDate : validEventsFiltered);
+          setApiStatus('success');
         } else {
           setEvents([]);
+          setApiStatus('error');
           toast({
             title: "Error",
             description: "Failed to load events.",
             variant: "destructive",
           });
         }
-      } catch {
+      } catch (error) {
+        console.error('API Error:', error);
         setEvents([]);
+        setApiStatus('error');
         toast({
           title: "Network Error",
           description: "Could not connect to backend.",
@@ -243,6 +255,23 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Debug Section - Remove this in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <section className="container py-4">
+            <Card className="bg-yellow-50 border-yellow-200">
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-yellow-800 mb-2">Debug Info</h3>
+                <div className="text-sm text-yellow-700 space-y-1">
+                  <p>API Status: <span className="font-mono">{apiStatus}</span></p>
+                  <p>Total Events: <span className="font-mono">{events.length}</span></p>
+                  <p>Featured Events: <span className="font-mono">{featuredEvents.length}</span></p>
+                  <p>Loading: <span className="font-mono">{loading ? 'true' : 'false'}</span></p>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
         {/* Featured Events Section */}
         <section className="container py-20">
             <div className="flex items-center justify-between mb-12">
@@ -338,17 +367,114 @@ export default function Home() {
               ))}
             </div>
             ) : (
-              <Card className="max-w-2xl mx-auto">
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                  <Star className="h-12 w-12 text-yellow-500 mb-3" />
-                  <h3 className="text-xl font-semibold mb-2">No featured events</h3>
+              <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {/* Sample Featured Events for demonstration */}
+                {[
+                  {
+                    id: 'sample-1',
+                    name: 'Nepal Music Festival 2024',
+                    category: 'Music',
+                    eventStart: '2024-12-15T18:00:00',
+                    eventEnd: '2024-12-15T23:00:00',
+                    location: 'Kathmandu, Nepal',
+                    city: 'Kathmandu',
+                    description: 'Experience the best of Nepali music with top artists performing live.',
+                    organizer: 'Nepal Events',
+                    imageUrl: '',
+                    price: 1500,
+                    ticketsSold: 45
+                  },
+                  {
+                    id: 'sample-2',
+                    name: 'Tech Innovation Summit',
+                    category: 'Tech',
+                    eventStart: '2024-12-20T09:00:00',
+                    eventEnd: '2024-12-20T17:00:00',
+                    location: 'Pokhara, Nepal',
+                    city: 'Pokhara',
+                    description: 'Join industry leaders for insights into the future of technology.',
+                    organizer: 'Tech Nepal',
+                    imageUrl: '',
+                    price: 2500,
+                    ticketsSold: 32
+                  },
+                  {
+                    id: 'sample-3',
+                    name: 'Art & Culture Exhibition',
+                    category: 'Art',
+                    eventStart: '2024-12-25T10:00:00',
+                    eventEnd: '2024-12-25T18:00:00',
+                    location: 'Lalitpur, Nepal',
+                    city: 'Lalitpur',
+                    description: 'Celebrate Nepali art and culture with local artists and performers.',
+                    organizer: 'Art Nepal',
+                    imageUrl: '',
+                    price: 800,
+                    ticketsSold: 28
+                  }
+                ].map((event: Event) => (
+                  <Card key={event.id} className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+                    <div className="relative overflow-hidden">
+                        <div className="aspect-video relative">
+                        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
+                          <Calendar className="h-12 w-12 text-slate-400" />
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                        </div>
+                      <div className="absolute top-4 right-4 flex gap-2">
+                        <Badge className="bg-yellow-500 text-black font-semibold">
+                          <Star className="mr-1 h-3 w-3" />
+                          Featured
+                        </Badge>
+                        <Badge className="bg-red-500 text-white font-semibold">
+                          <Zap className="mr-1 h-3 w-3" />
+                          HOT
+                        </Badge>
+                      </div>
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <h3 className="text-xl font-bold text-white mb-2 line-clamp-2">{event.name}</h3>
+                        <div className="flex items-center gap-4 text-white/90 text-sm">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4" />
+                            {event.location}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            {event.ticketsSold} sold
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="text-sm text-muted-foreground">
+                          {event.eventStart ? new Date(event.eventStart).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric'
+                          }) : 'TBD'}
+                        </div>
+                        <div className="text-2xl font-bold text-primary">
+                          ₨{event.price?.toFixed(0) || '0'}
+                        </div>
+                      </div>
+                      <Button asChild className="w-full" size="lg">
+                        <Link href={`/events/${event.id}`}>
+                          View Details
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+                <div className="col-span-full text-center mt-8">
                   <p className="text-muted-foreground mb-4">
                     {events.length === 0 
-                      ? "No events have been created yet. Be the first to create an amazing event!"
+                      ? "These are sample events. Create your own amazing events to get started!"
                       : "No upcoming events available. Check back soon for new events!"
                     }
                   </p>
-                  <div className="flex gap-4">
+                  <div className="flex gap-4 justify-center">
                     <Button asChild>
                       <Link href="#events">Browse All Events</Link>
                     </Button>
@@ -358,8 +484,8 @@ export default function Home() {
                       </Button>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
           </section>
 
@@ -480,7 +606,7 @@ export default function Home() {
                     Get Started
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="text-lg px-10 py-6 border-white/30 text-white hover:bg-white/10">
+                <Button asChild size="lg" className="!bg-green-500 !text-white hover:!bg-green-600 text-lg px-10 py-6 font-semibold">
                   <Link href="/admin/create-event">
                     <Flame className="mr-2 h-6 w-6" />
                     Create Event
