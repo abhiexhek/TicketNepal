@@ -41,35 +41,6 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('newest');
   const { toast } = useToast();
 
-  const debugEvents = async () => {
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-      const response = await fetch(`${API_URL}/api/events/debug/events`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Debug Events:', data);
-        toast({
-          title: "Events Debug",
-          description: `Total: ${data.totalEvents}, Current time: ${data.currentTime}`,
-          variant: "default"
-        });
-      } else {
-        toast({
-          title: "Debug Failed",
-          description: `Status: ${response.status}`,
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Debug error:', error);
-      toast({
-        title: "Debug Error",
-        description: "Could not check events.",
-        variant: "destructive"
-      });
-    }
-  };
-
   // Fetch all events on initial load
   useEffect(() => {
     const fetchEvents = async () => {
@@ -126,9 +97,6 @@ export default function Home() {
           const validEventsFiltered = validEvents.filter(Boolean);
           setEvents(validEventsFiltered);
           
-          console.log('Total events fetched:', data.length);
-          console.log('Valid events after filtering:', validEventsFiltered.length);
-          
           // Get featured events (newest 3 events)
           const sortedByDate = [...validEventsFiltered].sort((a, b) => {
             try {
@@ -136,15 +104,12 @@ export default function Home() {
               const dateB = new Date(b.eventStart);
               return dateB.getTime() - dateA.getTime();
             } catch (error) {
-              console.warn('Failed to sort events by date:', error);
               return 0;
             }
           });
           
           // If no events with valid dates, just take the first 3 events
           const featured = sortedByDate.length > 0 ? sortedByDate.slice(0, 3) : validEventsFiltered.slice(0, 3);
-          console.log('Featured events selected:', featured.length);
-          console.log('Featured events:', featured.map(e => ({ name: e.name, date: e.eventStart })));
           
           setFeaturedEvents(featured);
           setFilteredEvents(sortedByDate.length > 0 ? sortedByDate : validEventsFiltered);
@@ -295,9 +260,6 @@ export default function Home() {
                   View All Events
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
-              </Button>
-              <Button onClick={debugEvents} variant="outline" size="sm">
-                Debug Events
               </Button>
             </div>
             {loading ? (

@@ -633,46 +633,4 @@ public class EventController {
             return odt.toLocalDateTime();
         }
     }
-
-    // Temporary debug endpoint to check events in database
-    @GetMapping("/debug/events")
-    public ResponseEntity<?> debugEvents() {
-        try {
-            List<Event> allEvents = eventRepository.findAll();
-            LocalDateTime now = LocalDateTime.now();
-            
-            List<Map<String, Object>> eventInfo = new ArrayList<>();
-            for (Event event : allEvents) {
-                Map<String, Object> info = new HashMap<>();
-                info.put("id", event.getId());
-                info.put("name", event.getName());
-                info.put("eventStart", event.getEventStart());
-                info.put("eventEnd", event.getEventEnd());
-                info.put("deleted", event.getDeleted());
-                
-                // Check if event is expired
-                boolean isExpired = false;
-                if (event.getEventEnd() != null) {
-                    try {
-                        LocalDateTime end = parseToLocalDateTime(event.getEventEnd());
-                        isExpired = now.isAfter(end.plusDays(1));
-                    } catch (Exception e) {
-                        isExpired = false;
-                    }
-                }
-                info.put("isExpired", isExpired);
-                
-                eventInfo.add(info);
-            }
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("totalEvents", allEvents.size());
-            response.put("currentTime", now.toString());
-            response.put("events", eventInfo);
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
-        }
-    }
 }

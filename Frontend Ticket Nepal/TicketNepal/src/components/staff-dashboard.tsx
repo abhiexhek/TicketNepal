@@ -24,6 +24,7 @@ interface Event {
   eventStart: string;
   eventEnd: string;
   ticketsSold: number;
+  ticketsValidated?: number;
   organizer: {
     name: string;
   };
@@ -57,21 +58,50 @@ export function StaffDashboard() {
                 
                 if (response.ok) {
                     const eventsData = await response.json();
-                    setEvents(eventsData);
                     
                     // Calculate stats
                     const approved = eventsData.filter((e: Event) => e.status === "APPROVED").length;
                     const pending = eventsData.filter((e: Event) => e.status === "PENDING").length;
                     const rejected = eventsData.filter((e: Event) => e.status === "REJECTED").length;
                     
-                    setStats({
-                        totalEvents: eventsData.length,
-                        approvedEvents: approved,
-                        pendingEvents: pending,
-                        rejectedEvents: rejected,
-                        ticketsScanned: Math.floor(Math.random() * 150) + 50, // Mock data
-                        ticketsValidated: Math.floor(Math.random() * 120) + 30 // Mock data
+                    // Fetch validation statistics
+                    const statsResponse = await fetch(`${API_URL}/api/tickets/staff/${currentUser.id}/stats`, {
+                        headers: token ? { Authorization: `Bearer ${token}` } : {},
                     });
+                    
+                    if (statsResponse.ok) {
+                        const statsData = await statsResponse.json();
+                        
+                        // Add validation counts to events
+                        const eventsWithStats = eventsData.map((event: Event) => {
+                            const eventStat = statsData.eventStats?.find((stat: any) => stat.eventId === event.id);
+                            return {
+                                ...event,
+                                ticketsValidated: eventStat?.validatedTickets || 0
+                            };
+                        });
+                        
+                        setEvents(eventsWithStats);
+                        
+                        setStats({
+                            totalEvents: eventsData.length,
+                            approvedEvents: approved,
+                            pendingEvents: pending,
+                            rejectedEvents: rejected,
+                            ticketsScanned: statsData.todayValidated || 0,
+                            ticketsValidated: statsData.validatedTickets || 0
+                        });
+                    } else {
+                        // Fallback to basic stats if validation stats fail
+                        setStats({
+                            totalEvents: eventsData.length,
+                            approvedEvents: approved,
+                            pendingEvents: pending,
+                            rejectedEvents: rejected,
+                            ticketsScanned: 0,
+                            ticketsValidated: 0
+                        });
+                    }
                 } else {
                     setEvents([]);
                 }
@@ -341,6 +371,10 @@ export function StaffDashboard() {
                                             <div className="flex justify-between items-center">
                                                 <span className="text-sm text-muted-foreground">Tickets Sold</span>
                                                 <span className="text-sm font-medium">{event.ticketsSold || 0}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm text-muted-foreground">Validated</span>
+                                                <span className="text-sm font-medium text-green-600">{event.ticketsValidated || 0}</span>
                                             </div>
                                             {isEventEndedAndRemoved(event) && (
                                                 <div className="text-xs text-muted-foreground">This event has ended and is no longer visible in browse.</div>

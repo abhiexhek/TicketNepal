@@ -19,4 +19,7 @@ public interface TicketRepository extends MongoRepository<Ticket, String> {
     long countByEventId(String eventId);
 
     List<Ticket> findByTransactionId(String transactionId);
+    
+    // Add method to find tickets by multiple event IDs
+    List<Ticket> findByEventIdIn(List<String> eventIds);
 }

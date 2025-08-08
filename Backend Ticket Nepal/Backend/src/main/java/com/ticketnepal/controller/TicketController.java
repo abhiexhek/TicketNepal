@@ -342,63 +342,168 @@ public ResponseEntity<?> getTicket(@PathVariable String ticketId) {
     public ResponseEntity<?> checkInTicket(@RequestBody Map<String, String> body) {
         String ticketId = body.get("ticketId");
         String qrCodeHint = body.get("qrCodeHint");
-        Optional<Ticket> ticketOpt = Optional.empty();
-        if (ticketId != null) {
-            ticketOpt = ticketRepository.findById(ticketId);
-        } else if (qrCodeHint != null) {
-            List<Ticket> tickets = ticketRepository.findByQrCodeHint(qrCodeHint);
-            if (!tickets.isEmpty()) {
-                ticketOpt = Optional.of(tickets.get(0)); // Use the first ticket found
+        
+        if (ticketId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Ticket ID is required"));
+        }
+        
+        Optional<Ticket> ticketOpt = ticketRepository.findById(ticketId);
+        if (ticketOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        Ticket ticket = ticketOpt.get();
+        
+        // Get current user
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String userEmail = auth.getName();
+        Optional<User> userOpt = userRepository.findByEmail(userEmail);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        User user = userOpt.get();
+        
+        // Authorization logic
+        boolean isAuthorized = false;
+        if ("ADMIN".equals(user.getRole())) {
+            isAuthorized = true;
+        } else if ("ORGANIZER".equals(user.getRole())) {
+            // Organizer can only check in tickets for their own events
+            Optional<Event> eventOpt = eventRepository.findById(ticket.getEventId());
+            if (eventOpt.isPresent() && eventOpt.get().getOrganizer().equals(user.getId())) {
+                isAuthorized = true;
+            }
+        } else if ("STAFF".equals(user.getRole())) {
+            // Staff can only check in tickets for events they're approved for
+            Optional<StaffApplication> staffApp = staffApplicationRepository.findByEventIdAndStaffId(ticket.getEventId(), user.getId());
+            if (staffApp.isPresent() && "APPROVED".equals(staffApp.get().getStatus())) {
+                isAuthorized = true;
             }
         }
-        if (ticketOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Ticket not found"));
+        
+        if (!isAuthorized) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Not authorized to check in this ticket"));
         }
-        Ticket ticket = ticketOpt.get();
-
-        // Authorization: Only ADMIN, event ORGANIZER, or APPROVED STAFF for this event
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || authentication.getAuthorities() == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Not authorized"));
-        }
-
-        // Load current user by email (username is set to email in CustomUserDetailsService)
-        String currentUserEmail = authentication.getName();
-        User currentUser = userRepository.findByEmail(currentUserEmail).orElse(null);
-        if (currentUser == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "User not found"));
-        }
-
-        Event event = eventRepository.findById(ticket.getEventId()).orElse(null);
-        if (event == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Event not found"));
-        }
-
-        boolean isAdmin = authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        boolean isOrganizer = authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ORGANIZER"));
-        boolean isStaff = authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_STAFF"));
-
-        boolean authorized = false;
-        if (isAdmin) {
-            authorized = true;
-        } else if (isOrganizer) {
-            // Organizer must be the event owner
-            authorized = event.getOrganizer() != null && event.getOrganizer().equals(currentUser.getId());
-        } else if (isStaff) {
-            // Staff must be APPROVED for this specific event
-            Optional<StaffApplication> appOpt = staffApplicationRepository.findByEventIdAndStaffId(event.getId(), currentUser.getId());
-            authorized = appOpt.isPresent() && "APPROVED".equalsIgnoreCase(appOpt.get().getStatus());
-        }
-
-        if (!authorized) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Not authorized to check in for this event"));
-        }
-
-        if (ticket.isCheckedIn()) {
-            return ResponseEntity.ok(Map.of("message", "Ticket already checked in", "ticket", ticket));
-        }
+        
         ticket.setCheckedIn(true);
         ticketRepository.save(ticket);
         return ResponseEntity.ok(Map.of("message", "Ticket checked in successfully", "ticket", ticket));
+    }
+
+    // 🟢 NEW: Get validation statistics for staff
+    @GetMapping("/staff/{staffId}/stats")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    public ResponseEntity<?> getStaffValidationStats(@PathVariable String staffId) {
+        try {
+            // Get current user for authorization
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String userEmail = auth.getName();
+            Optional<User> currentUser = userRepository.findByEmail(userEmail);
+            if (currentUser.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            // Only allow staff to see their own stats, or admin to see anyone's
+            if (!"ADMIN".equals(currentUser.get().getRole()) && !currentUser.get().getId().equals(staffId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            // Get all events this staff is approved for
+            List<StaffApplication> approvedApplications = staffApplicationRepository.findByStaffIdAndStatus(staffId, "APPROVED");
+            List<String> approvedEventIds = approvedApplications.stream()
+                .map(StaffApplication::getEventId)
+                .collect(Collectors.toList());
+            
+            if (approvedEventIds.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                    "totalEvents", 0,
+                    "totalTickets", 0,
+                    "validatedTickets", 0,
+                    "pendingTickets", 0,
+                    "todayValidated", 0,
+                    "thisWeekValidated", 0,
+                    "eventStats", new ArrayList<>()
+                ));
+            }
+            
+            // Get all tickets for approved events
+            List<Ticket> allTickets = ticketRepository.findByEventIdIn(approvedEventIds);
+            
+            // Calculate statistics
+            long totalTickets = allTickets.size();
+            long validatedTickets = allTickets.stream().filter(Ticket::isCheckedIn).count();
+            long pendingTickets = totalTickets - validatedTickets;
+            
+            // Calculate today's validations
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
+            
+            long todayValidated = allTickets.stream()
+                .filter(Ticket::isCheckedIn)
+                .filter(ticket -> {
+                    // Assuming we'll add a checkedInAt timestamp later
+                    // For now, we'll use a placeholder
+                    return true; // Placeholder
+                })
+                .count();
+            
+            // Calculate this week's validations
+            Calendar weekStart = Calendar.getInstance();
+            weekStart.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY);
+            weekStart.set(Calendar.HOUR_OF_DAY, 0);
+            weekStart.set(Calendar.MINUTE, 0);
+            weekStart.set(Calendar.SECOND, 0);
+            weekStart.set(Calendar.MILLISECOND, 0);
+            
+            long thisWeekValidated = allTickets.stream()
+                .filter(Ticket::isCheckedIn)
+                .filter(ticket -> {
+                    // Placeholder for now
+                    return true;
+                })
+                .count();
+            
+            // Get per-event statistics
+            List<Map<String, Object>> eventStats = new ArrayList<>();
+            for (String eventId : approvedEventIds) {
+                Optional<Event> eventOpt = eventRepository.findById(eventId);
+                if (eventOpt.isPresent()) {
+                    Event event = eventOpt.get();
+                    List<Ticket> eventTickets = allTickets.stream()
+                        .filter(ticket -> ticket.getEventId().equals(eventId))
+                        .collect(Collectors.toList());
+                    
+                    long eventTotalTickets = eventTickets.size();
+                    long eventValidatedTickets = eventTickets.stream().filter(Ticket::isCheckedIn).count();
+                    
+                    eventStats.add(Map.of(
+                        "eventId", eventId,
+                        "eventName", event.getName(),
+                        "eventDate", event.getEventStart(),
+                        "totalTickets", eventTotalTickets,
+                        "validatedTickets", eventValidatedTickets,
+                        "pendingTickets", eventTotalTickets - eventValidatedTickets,
+                        "validationRate", eventTotalTickets > 0 ? (double) eventValidatedTickets / eventTotalTickets * 100 : 0
+                    ));
+                }
+            }
+            
+            return ResponseEntity.ok(Map.of(
+                "totalEvents", approvedEventIds.size(),
+                "totalTickets", totalTickets,
+                "validatedTickets", validatedTickets,
+                "pendingTickets", pendingTickets,
+                "todayValidated", todayValidated,
+                "thisWeekValidated", thisWeekValidated,
+                "eventStats", eventStats
+            ));
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to get validation statistics"));
+        }
     }
 }
