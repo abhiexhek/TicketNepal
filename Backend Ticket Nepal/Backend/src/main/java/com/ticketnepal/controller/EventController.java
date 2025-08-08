@@ -269,6 +269,21 @@ public class EventController {
                     .collect(Collectors.toList());
             }
             
+            // Hide events that ended more than 1 day ago
+            LocalDateTime now = LocalDateTime.now();
+            events = events.stream()
+                .filter(e -> {
+                    if (e.getEventEnd() == null) return true;
+                    try {
+                        LocalDateTime end = LocalDateTime.parse(e.getEventEnd());
+                        return now.isBefore(end.plusDays(1));
+                    } catch (Exception ex) {
+                        logger.warn("Failed to parse eventEnd for event: {}", e.getId());
+                        return true;
+                    }
+                })
+                .collect(Collectors.toList());
+            
             // Filter out deleted events
             events.removeIf(e -> Boolean.TRUE.equals(e.getDeleted()));
             return ResponseEntity.ok(events);
@@ -565,25 +580,31 @@ public class EventController {
     // Scheduled task to delete events after eventEnd
     @Scheduled(cron = "0 0 * * * *") // Every hour
     public void deleteExpiredEvents() {
-        List<Event> expiredEvents = eventRepository.findByEventEndBefore(LocalDateTime.now());
-        for (Event event : expiredEvents) {
-            try {
-                // Delete all tickets for this event
-                ticketRepository.findByEventId(event.getId()).forEach(ticket -> {
-                    ticketRepository.deleteById(ticket.getId());
-                });
-                if (event.getImageUrl() != null) {
-                    try {
-                        imageService.deleteImageByUrl(event.getImageUrl());
-                    } catch (Exception e) {
-                        logger.warn("Failed to delete image from Cloudinary: {}", event.getImageUrl(), e);
-                    }
+        // Soft-remove events one day after they end by marking them as deleted
+        try {
+            List<Event> allEvents = eventRepository.findAll();
+            LocalDateTime now = LocalDateTime.now();
+            for (Event event : allEvents) {
+                if (Boolean.TRUE.equals(event.getDeleted())) {
+                    continue;
                 }
-                eventRepository.deleteById(event.getId());
-                logger.info("Deleted expired event and its tickets: {}", event.getId());
-            } catch (Exception e) {
-                logger.error("Failed to delete expired event: {}", event.getId(), e);
+                String endStr = event.getEventEnd();
+                if (endStr == null) {
+                    continue;
+                }
+                try {
+                    LocalDateTime end = LocalDateTime.parse(endStr);
+                    if (now.isAfter(end.plusDays(1))) {
+                        event.setDeleted(true);
+                        eventRepository.save(event);
+                        logger.info("Soft-removed event (marked deleted) after 1 day: {}", event.getId());
+                    }
+                } catch (Exception parseEx) {
+                    logger.warn("Failed to parse eventEnd for event: {}", event.getId());
+                }
             }
+        } catch (Exception ex) {
+            logger.error("Failed during scheduled soft-removal of expired events", ex);
         }
     }
 

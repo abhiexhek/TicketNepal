@@ -54,7 +54,7 @@ export default function BookTicketPage() {
   const fetchReservedSeats = async () => {
     if (!event) return;
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/reserved?eventId=${event.id}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/tickets/reserved?eventId=${event.id}`);
       const data = await res.json();
       setReservedSeats(data.reservedSeats || []);
     } catch (e) {
@@ -133,7 +133,7 @@ export default function BookTicketPage() {
     if (!currentUser) return;
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/tickets`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

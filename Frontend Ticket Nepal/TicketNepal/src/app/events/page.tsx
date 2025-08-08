@@ -16,7 +16,15 @@ export default function EventsBrowsePage() {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
         const res = await fetch(`${API_URL}/api/events`);
         if (res.ok) {
-          setEvents(await res.json());
+          const data = await res.json();
+          const now = new Date();
+          const filtered = (data || []).filter((e: any) => {
+            if (!e.eventEnd) return true;
+            const end = new Date(e.eventEnd);
+            const grace = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+            return now < grace;
+          });
+          setEvents(filtered);
         } else {
           setEvents([]);
         }
@@ -43,7 +51,7 @@ export default function EventsBrowsePage() {
                 {event.imageUrl && (
                   <div className="relative w-full h-40 mb-2 rounded overflow-hidden">
                     <Image
-                      src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL}${event.imageUrl}`}
+                      src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${event.imageUrl}`}
                       alt={event.name}
                       fill
                       className="object-cover"
@@ -51,8 +59,8 @@ export default function EventsBrowsePage() {
                     />
                   </div>
                 )}
-                <CardTitle>{event.name}</CardTitle>
-                <CardDescription>{event.category} | {event.eventStart ? new Date(event.eventStart).toLocaleString() : ''}</CardDescription>
+                <CardTitle className="line-clamp-1">{event.name}</CardTitle>
+                <CardDescription className="line-clamp-1">{event.category} | {event.eventStart ? new Date(event.eventStart).toLocaleString() : ''}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-2 text-sm text-muted-foreground">Location: <b>{event.location}</b></div>

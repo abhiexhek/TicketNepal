@@ -108,7 +108,7 @@ export default function EventDetailPage() {
             <CardContent>
               <div className="mb-4">
                 <img
-                  src={event.imageUrl?.startsWith("http") ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL}${event.imageUrl}`}
+                  src={event.imageUrl?.startsWith("http") ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${event.imageUrl}`}
                   alt={event.name}
                   className="w-full max-h-80 object-cover rounded-lg border"
                 />

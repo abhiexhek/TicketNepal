@@ -9,7 +9,7 @@ function VerifyPageContent() {
 
   useEffect(() => {
     if (token) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/verify?token=${token}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/auth/verify?token=${token}`)
         .then(res => res.text())
         .then(msg => setStatus(msg))
         .catch(() => setStatus("Verification failed."));

@@ -414,6 +414,52 @@ export function OrganizerDashboard() {
                 </div>
             )}
 
+            {/* Per-event Revenue Breakdown */}
+            {dashboardData && (
+              <Card className="card-elevated">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Event Revenue Breakdown
+                  </CardTitle>
+                  <CardDescription>Revenue and sales for each event</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-muted-foreground">
+                          <th className="py-2 pr-4">Event</th>
+                          <th className="py-2 pr-4">Status</th>
+                          <th className="py-2 pr-4">Tickets Sold</th>
+                          <th className="py-2 pr-4">Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dashboardData.events.map((ev) => (
+                          <tr key={ev.id} className="border-t">
+                            <td className="py-2 pr-4">
+                              <div className="flex items-center gap-2">
+                                {ev.imageUrl && (
+                                  <img src={ev.imageUrl.startsWith('http') ? ev.imageUrl : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${ev.imageUrl}`} alt={ev.name} className="w-8 h-8 rounded object-cover" />
+                                )}
+                                <span className="font-medium line-clamp-1">{ev.name}</span>
+                              </div>
+                            </td>
+                            <td className="py-2 pr-4">
+                              <Badge className={getStatusColor(ev.status)}>{ev.status}</Badge>
+                            </td>
+                            <td className="py-2 pr-4">{ev.ticketsSold}</td>
+                            <td className="py-2 pr-4 font-semibold text-green-600">₨{(ev.income ?? 0).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Events Section */}
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -450,7 +496,7 @@ export function OrganizerDashboard() {
                                     {event.imageUrl && (
                                         <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
                                             <Image
-                                                src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL}${event.imageUrl}`}
+                                                src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${event.imageUrl}`}
                                                 alt={event.name}
                                                 fill
                                                 className="object-cover group-hover:scale-105 transition-transform duration-300"

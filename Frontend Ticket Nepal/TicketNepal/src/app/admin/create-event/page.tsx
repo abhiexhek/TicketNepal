@@ -62,6 +62,7 @@ export default function CreateEventPage() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formProgress, setFormProgress] = useState(0);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const popularCategories = [
     "Music",
     "Tech",
@@ -150,7 +151,7 @@ export default function CreateEventPage() {
     try {
       const token = localStorage.getItem('authToken');
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/events`,
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/events`,
         {
           method: 'POST',
           body: formData,
@@ -551,24 +552,63 @@ export default function CreateEventPage() {
                           Event Image
                         </FormLabel>
                         <FormControl>
-                          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
-                            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                            <Input
-                              type="file"
-                              accept={ACCEPTED_IMAGE_TYPES.join(", ")}
-                              onChange={(e) => field.onChange(e.target.files)}
-                              className="hidden"
-                              id="image-upload"
-                            />
-                            <label htmlFor="image-upload" className="cursor-pointer">
-                              <span className="text-sm font-medium text-primary hover:text-primary/80">
-                                Click to upload
-                              </span>
-                              <span className="text-sm text-muted-foreground"> or drag and drop</span>
-                            </label>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              PNG, JPG, JPEG, WEBP up to 5MB
-                            </p>
+                          <div className="space-y-4">
+                            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                              <Input
+                                type="file"
+                                accept={ACCEPTED_IMAGE_TYPES.join(", ")}
+                                onChange={(e) => {
+                                  field.onChange(e.target.files);
+                                  if (e.target.files && e.target.files[0]) {
+                                    const file = e.target.files[0];
+                                    const reader = new FileReader();
+                                    reader.onload = (event) => {
+                                      setUploadedImage(event.target?.result as string);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                                className="hidden"
+                                id="image-upload"
+                              />
+                              <label htmlFor="image-upload" className="cursor-pointer">
+                                <span className="text-sm font-medium text-primary hover:text-primary/80">
+                                  Click to upload
+                                </span>
+                                <span className="text-sm text-muted-foreground"> or drag and drop</span>
+                              </label>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                PNG, JPG, JPEG, WEBP up to 5MB
+                              </p>
+                            </div>
+                            
+                            {/* Image Preview */}
+                            {uploadedImage && (
+                              <div className="relative">
+                                <div className="aspect-video rounded-lg overflow-hidden border">
+                                  <img
+                                    src={uploadedImage}
+                                    alt="Event preview"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-2 right-2"
+                                  onClick={() => {
+                                    setUploadedImage(null);
+                                    field.onChange(undefined);
+                                    const input = document.getElementById('image-upload') as HTMLInputElement;
+                                    if (input) input.value = '';
+                                  }}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </FormControl>
                         <FormDescription>

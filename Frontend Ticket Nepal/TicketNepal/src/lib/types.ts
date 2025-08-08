@@ -8,10 +8,12 @@ export interface Event {
   location: string;
   city: string;
   description: string;
-  organizer: string;
+  organizer: string | { name: string };
   imageUrl: string;
   price: number;
   seats?: string[];
+  // Optional fields enriched by backend in some endpoints
+  ticketsSold?: number;
 }
 
 export interface Ticket {

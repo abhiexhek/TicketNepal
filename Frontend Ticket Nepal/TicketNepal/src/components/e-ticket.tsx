@@ -21,7 +21,7 @@ export function ETicket({ ticket }: ETicketProps) {
   if (eventImageUrl) {
     eventImageUrl = eventImageUrl.startsWith("http")
       ? eventImageUrl
-      : `${process.env.NEXT_PUBLIC_API_URL}${eventImageUrl}`;
+      : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${eventImageUrl}`;
   } else {
     eventImageUrl = "";
   }
@@ -31,7 +31,7 @@ export function ETicket({ ticket }: ETicketProps) {
   if (qrCodeUrl) {
     qrCodeUrl = qrCodeUrl.startsWith("http")
       ? qrCodeUrl
-      : `${process.env.NEXT_PUBLIC_API_URL}${qrCodeUrl}`;
+      : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${qrCodeUrl}`;
   } else {
     qrCodeUrl = "";
   }

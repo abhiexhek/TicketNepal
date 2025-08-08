@@ -149,7 +149,7 @@ export function EventCard({ event }: EventCardProps) {
               {event.eventStart ? (
                 <div>
                   <div className="font-medium">
-                    {toSafeDate(event.eventStart).toLocaleDateString("en-US", { 
+                    {toSafeDate(event.eventStart)?.toLocaleDateString("en-US", { 
                       weekday: 'short',
                       month: 'short', 
                       day: 'numeric',
@@ -157,7 +157,7 @@ export function EventCard({ event }: EventCardProps) {
                     })}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {toSafeDate(event.eventStart).toLocaleTimeString("en-US", { 
+                    {toSafeDate(event.eventStart)?.toLocaleTimeString("en-US", { 
                       hour: '2-digit', 
                       minute: '2-digit' 
                     })}
@@ -186,7 +186,7 @@ export function EventCard({ event }: EventCardProps) {
             {event.organizer && (
               <div className="flex items-center gap-1">
                 <Star className="h-3 w-3" />
-                <span className="truncate max-w-20">{event.organizer.name}</span>
+                <span className="truncate max-w-20">{typeof event.organizer === 'string' ? event.organizer : event.organizer.name}</span>
               </div>
             )}
           </div>

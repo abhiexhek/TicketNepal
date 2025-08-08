@@ -32,7 +32,7 @@ function BookingConfirmationPageContent() {
       return;
     }
     setLoading(true);
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/validate/transaction?transactionId=${transactionId}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/tickets/validate/transaction?transactionId=${transactionId}`)
       .then(res => res.json())
       .then(data => {
         setConfirmation(data);
@@ -66,20 +66,20 @@ function BookingConfirmationPageContent() {
                   <div className="mb-2">Seats: <b>{confirmation.tickets?.map(t => t.seat).join(', ')}</b></div>
                 </div>
                 <div className="w-full flex flex-col items-center gap-2">
-                  <Button onClick={() => setQrOpen(transactionId || '')} className="w-full">Show QR Code</Button>
+                  <Button onClick={() => setQrOpen(true)} className="w-full">Show QR Code</Button>
                   <Dialog open={!!qrOpen} onOpenChange={() => setQrOpen(false)}>
                     <DialogContent>
                       <DialogTitle>Group QR Code</DialogTitle>
                       <div className="flex flex-col items-center gap-2">
                         <img
-                          src={`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/qr/transaction/${transactionId}`}
+                          src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/tickets/qr/transaction/${transactionId}`}
                           alt="Group QR Code"
                           className="w-40 h-40 border rounded-lg"
                         />
                         <Button
                           variant="outline"
                           onClick={async () => {
-                            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/qr/transaction/${transactionId}`);
+                            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/tickets/qr/transaction/${transactionId}`);
                             const blob = await response.blob();
                             const url = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');

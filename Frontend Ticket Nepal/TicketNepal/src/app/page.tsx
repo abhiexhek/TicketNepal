@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Flame, Calendar, MapPin, Users, Star, ArrowRight, Play, TrendingUp } from "lucide-react";
+import { Flame, Calendar, MapPin, Users, ArrowRight, Play, TrendingUp } from "lucide-react";
 
 export default function Home() {
   const [events, setEvents] = useState([]);
@@ -55,7 +55,7 @@ export default function Home() {
   // Handle filter changes from EventFilters component
   const handleFilterChange = async (filters: { category?: string; eventStart?: string; location?: string; search?: string }) => {
     setLoading(true);
-    let url = `${process.env.NEXT_PUBLIC_API_URL}/api/events?`;
+    let url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/events?`;
     if (filters.category) url += `category=${filters.category}&`;
     if (filters.eventStart) url += `eventStart=${filters.eventStart}&`;
     if (filters.location) url += `location=${filters.location}&`;
@@ -116,20 +116,6 @@ export default function Home() {
                     </Link>
                   </Button>
                 </div>
-                <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                    <span>4.9/5 Rating</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    <span>10K+ Users</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>500+ Events</span>
-                  </div>
-                </div>
               </div>
               <div className="relative">
                 <div className="relative z-10">
@@ -174,7 +160,7 @@ export default function Home() {
                     {event.imageUrl && (
                       <div className="aspect-video relative">
                         <img
-                          src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL}${event.imageUrl}`}
+                          src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${event.imageUrl}`}
                           alt={event.name}
                           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                         />

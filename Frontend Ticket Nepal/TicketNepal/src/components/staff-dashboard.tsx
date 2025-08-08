@@ -112,6 +112,13 @@ export function StaffDashboard() {
         }
     };
 
+    const isEventEndedAndRemoved = (event: Event) => {
+        if (!event.eventEnd) return false;
+        const end = new Date(event.eventEnd);
+        const removedAfter = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+        return new Date() >= removedAfter;
+    };
+
     if (loading) {
         return (
             <div className="space-y-8 animate-fade-in">
@@ -144,6 +151,9 @@ export function StaffDashboard() {
                     <h1 className="text-4xl font-bold tracking-tight">Staff Dashboard</h1>
                     <p className="text-muted-foreground mt-2">
                         Ticket validation and event management
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Note: Events automatically disappear from browse after 1 day of ending.
                     </p>
                 </div>
                 <Button asChild className="shadow-sm">
@@ -291,17 +301,22 @@ export function StaffDashboard() {
                                         {event.imageUrl && (
                                             <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
                                                 <Image
-                                                    src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL}${event.imageUrl}`}
+                                                    src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${event.imageUrl}`}
                                                     alt={event.name}
                                                     fill
                                                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                                                     unoptimized
                                                 />
-                                                <div className="absolute top-3 right-3">
+                                                <div className="absolute top-3 right-3 flex gap-2">
                                                     <Badge className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400">
                                                         <CheckCircle className="mr-1 h-3 w-3" />
                                                         Approved
                                                     </Badge>
+                                                    {isEventEndedAndRemoved(event) && (
+                                                        <Badge variant="secondary" className="bg-gray-100 text-gray-700">
+                                                            Ended • Removed after 1 day
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -327,8 +342,11 @@ export function StaffDashboard() {
                                                 <span className="text-sm text-muted-foreground">Tickets Sold</span>
                                                 <span className="text-sm font-medium">{event.ticketsSold || 0}</span>
                                             </div>
+                                            {isEventEndedAndRemoved(event) && (
+                                                <div className="text-xs text-muted-foreground">This event has ended and is no longer visible in browse.</div>
+                                            )}
                                         </div>
-                                        <Button asChild className="w-full">
+                                        <Button asChild className="w-full" disabled={isEventEndedAndRemoved(event)}>
                                             <Link href={`/admin/scan?eventId=${event.id}`}>
                                                 <QrCode className="mr-2 h-4 w-4" />
                                                 Start Validation
@@ -360,7 +378,7 @@ export function StaffDashboard() {
                                         {event.imageUrl && (
                                             <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
                                                 <Image
-                                                    src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL}${event.imageUrl}`}
+                                                    src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${event.imageUrl}`}
                                                     alt={event.name}
                                                     fill
                                                     className="object-cover"
@@ -424,7 +442,7 @@ export function StaffDashboard() {
                                         {event.imageUrl && (
                                             <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
                                                 <Image
-                                                    src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL}${event.imageUrl}`}
+                                                    src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${event.imageUrl}`}
                                                     alt={event.name}
                                                     fill
                                                     className="object-cover"
