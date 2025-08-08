@@ -32,7 +32,7 @@ export default function ScanTicketPage() {
 
   const verifyTicket = useCallback(async (qrHint: string) => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL;
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
       const token = localStorage.getItem('authToken');
       // Clean the scanned value
       const cleanHint = qrHint.trim();

@@ -28,7 +28,7 @@ export default function MyTicketsPage() {
       }
       setLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL;
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
         const token = localStorage.getItem('authToken');
         const response = await fetch(`${API_URL}/api/tickets/user/${String(currentUser.id)}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},

@@ -13,7 +13,7 @@ export default function EventsBrowsePage() {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL;
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
         const res = await fetch(`${API_URL}/api/events`);
         if (res.ok) {
           setEvents(await res.json());

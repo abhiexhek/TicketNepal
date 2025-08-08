@@ -28,7 +28,7 @@ export default function EventDetailPage() {
     const fetchEvent = async () => {
       setLoading(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL;
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
         const res = await fetch(`${API_URL}/api/events/${id}`);
         if (res.ok) {
           setEvent(await res.json());
@@ -49,7 +49,7 @@ export default function EventDetailPage() {
       if (!id || !currentUser || currentUser.role !== "Staff") return;
       setCheckingStatus(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL;
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
         const token = localStorage.getItem('authToken');
         const res = await fetch(`${API_URL}/api/events/staff/${currentUser.id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -141,7 +141,7 @@ export default function EventDetailPage() {
                       onClick={async () => {
                         setApplying(true);
                         try {
-                          const API_URL = process.env.NEXT_PUBLIC_API_URL;
+                          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
                           const token = localStorage.getItem('authToken');
                           const response = await fetch(`${API_URL}/api/events/${event.id}/apply-staff`, {
                             method: 'POST',

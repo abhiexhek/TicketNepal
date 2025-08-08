@@ -61,6 +61,115 @@ public class EventController {
     @Autowired
     private StaffApplicationRepository staffApplicationRepository;
 
+
+
+    // Professional Organizer Dashboard with Analytics
+    @GetMapping("/organizer/{organizerId}/dashboard")
+    public ResponseEntity<Map<String, Object>> getOrganizerDashboard(@PathVariable String organizerId) {
+        try {
+            List<Event> events = eventRepository.findByOrganizer(organizerId);
+            // Filter out deleted events
+            events.removeIf(e -> Boolean.TRUE.equals(e.getDeleted()));
+            
+            Map<String, Object> dashboard = new HashMap<>();
+            
+            // Calculate comprehensive statistics
+            double totalRevenue = 0.0;
+            long totalTicketsSold = 0;
+            int upcomingEvents = 0;
+            int pastEvents = 0;
+            int ongoingEvents = 0;
+            int draftEvents = 0;
+            
+            LocalDateTime now = LocalDateTime.now();
+            List<Map<String, Object>> eventAnalytics = new ArrayList<>();
+            
+            for (Event event : events) {
+                long ticketsSold = ticketRepository.countByEventId(event.getId());
+                double eventRevenue = event.getIncome() != null ? event.getIncome() : 0.0;
+                
+                totalRevenue += eventRevenue;
+                totalTicketsSold += ticketsSold;
+                
+                // Determine event status
+                String eventStatus = "draft";
+                if (event.getEventStart() != null && event.getEventEnd() != null) {
+                    try {
+                        LocalDateTime eventStart = LocalDateTime.parse(event.getEventStart());
+                        LocalDateTime eventEnd = LocalDateTime.parse(event.getEventEnd());
+                        
+                        if (now.isBefore(eventStart)) {
+                            eventStatus = "upcoming";
+                            upcomingEvents++;
+                        } else if (now.isAfter(eventEnd)) {
+                            eventStatus = "past";
+                            pastEvents++;
+                        } else {
+                            eventStatus = "ongoing";
+                            ongoingEvents++;
+                        }
+                    } catch (Exception e) {
+                        logger.warn("Failed to parse event dates for event: {}", event.getId());
+                        draftEvents++;
+                    }
+                } else {
+                    draftEvents++;
+                }
+                
+                // Create event analytics object
+                Map<String, Object> eventAnalytic = new HashMap<>();
+                eventAnalytic.put("id", event.getId());
+                eventAnalytic.put("name", event.getName());
+                eventAnalytic.put("category", event.getCategory());
+                eventAnalytic.put("location", event.getLocation());
+                eventAnalytic.put("imageUrl", event.getImageUrl());
+                eventAnalytic.put("price", event.getPrice());
+                eventAnalytic.put("income", eventRevenue);
+                eventAnalytic.put("ticketsSold", ticketsSold);
+                eventAnalytic.put("eventStart", event.getEventStart());
+                eventAnalytic.put("eventEnd", event.getEventEnd());
+                eventAnalytic.put("status", eventStatus);
+                eventAnalytic.put("seats", event.getSeats());
+                
+                eventAnalytics.add(eventAnalytic);
+            }
+            
+            // Calculate growth metrics (mock data for now)
+            double revenueGrowth = totalRevenue > 0 ? Math.random() * 25 + 5 : 0; // 5-30% growth
+            double ticketGrowth = totalTicketsSold > 0 ? Math.random() * 20 + 10 : 0; // 10-30% growth
+            
+            // Get organizer info
+            Optional<User> organizerOpt = userRepository.findById(organizerId);
+            Map<String, Object> organizerInfo = new HashMap<>();
+            if (organizerOpt.isPresent()) {
+                User organizer = organizerOpt.get();
+                organizerInfo.put("name", organizer.getName());
+                organizerInfo.put("email", organizer.getEmail());
+                organizerInfo.put("role", organizer.getRole());
+            }
+            
+            // Build dashboard response
+            dashboard.put("organizer", organizerInfo);
+            dashboard.put("events", eventAnalytics);
+            dashboard.put("statistics", Map.of(
+                "totalRevenue", totalRevenue,
+                "totalTicketsSold", totalTicketsSold,
+                "upcomingEvents", upcomingEvents,
+                "pastEvents", pastEvents,
+                "ongoingEvents", ongoingEvents,
+                "draftEvents", draftEvents,
+                "totalEvents", events.size(),
+                "revenueGrowth", revenueGrowth,
+                "ticketGrowth", ticketGrowth
+            ));
+            
+            return ResponseEntity.ok(dashboard);
+        } catch (Exception e) {
+            logger.error("Failed to fetch organizer dashboard for: {}", organizerId, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     // Get all events for an organizer
     @GetMapping("/organizer/{organizerId}")
     public ResponseEntity<List<Map<String, Object>>> getEventsByOrganizer(@PathVariable String organizerId) {

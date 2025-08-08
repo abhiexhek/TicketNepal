@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Calendar, MapPin, Tag, ArrowRight } from "lucide-react";
+import { Calendar, MapPin, Tag, ArrowRight, Clock, Users, Star } from "lucide-react";
 
 import type { Event } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -32,78 +32,177 @@ export function EventCard({ event }: EventCardProps) {
   // Status logic
   let status = null;
   let statusColor = '';
+  let statusText = '';
+  
   if (event.eventEnd) {
     const now = new Date();
-    if (now <= new Date(event.eventEnd)) {
-      status = 'Active';
-      statusColor = 'bg-green-500';
-    } else {
-      status = 'Expired';
-      statusColor = 'bg-red-500';
+    const eventEnd = new Date(event.eventEnd);
+    const eventStart = new Date(event.eventStart);
+    
+    if (now > eventEnd) {
+      status = 'expired';
+      statusColor = 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400';
+      statusText = 'Expired';
+    } else if (now >= eventStart && now <= eventEnd) {
+      status = 'ongoing';
+      statusColor = 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400';
+      statusText = 'Live Now';
+    } else if (now < eventStart) {
+      status = 'upcoming';
+      statusColor = 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400';
+      statusText = 'Upcoming';
     }
   }
 
+  // Calculate time until event
+  const getTimeUntilEvent = () => {
+    if (!event.eventStart) return null;
+    const now = new Date();
+    const eventStart = new Date(event.eventStart);
+    const diffTime = eventStart.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return null;
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays < 7) return `${diffDays} days`;
+    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks`;
+    return `${Math.ceil(diffDays / 30)} months`;
+  };
+
+  const timeUntilEvent = getTimeUntilEvent();
+
   return (
-    <Card className={`flex flex-col overflow-hidden h-full max-w-sm w-full mx-auto transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative ${status === 'Expired' ? 'pointer-events-none opacity-70' : ''}`}>
-      {status && (
-        <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
-          <span className={`inline-block w-2 h-2 rounded-full ${statusColor}`}></span>
-          <span className={`text-xs font-semibold ${status === 'Active' ? 'text-green-700' : 'text-red-700'}`}>{status}</span>
-        </div>
-      )}
-      <div className="block overflow-hidden relative">
-        <div className="relative w-full h-48 bg-gray-100">
+    <Card className="card-interactive group h-full flex flex-col overflow-hidden">
+      {/* Image Section */}
+      <div className="relative overflow-hidden">
+        <div className="aspect-video relative bg-muted">
           <Image
             src={imageUrl}
             alt={event.name}
             fill
-            className="object-cover w-full h-48 transition-transform duration-300 group-hover:scale-105"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
             unoptimized
             priority
           />
-          <Badge variant="secondary" className="absolute top-2 right-2 text-base">{`₨${event.price}`}</Badge>
+          {/* Overlay for expired events */}
+          {status === 'expired' && (
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+              <div className="text-center">
+                <Clock className="h-8 w-8 text-white mx-auto mb-2" />
+                <span className="text-white font-semibold">Event Expired</span>
+              </div>
+            </div>
+          )}
         </div>
-        {status === 'Expired' && (
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20">
-            <span className="text-lg font-bold text-white">Event Expired</span>
+        
+        {/* Status Badge */}
+        {status && (
+          <div className="absolute top-3 left-3">
+            <Badge className={statusColor}>
+              {statusText}
+            </Badge>
+          </div>
+        )}
+        
+        {/* Price Badge */}
+        <div className="absolute top-3 right-3">
+          <Badge className="bg-background/90 text-foreground font-semibold">
+            ₨{event.price?.toFixed(2) || '0.00'}
+          </Badge>
+        </div>
+        
+        {/* Time until event */}
+        {timeUntilEvent && status === 'upcoming' && (
+          <div className="absolute bottom-3 left-3">
+            <Badge variant="secondary" className="text-xs">
+              <Clock className="mr-1 h-3 w-3" />
+              {timeUntilEvent}
+            </Badge>
           </div>
         )}
       </div>
-      <CardHeader className="p-3 sm:p-4">
-        <CardTitle className="font-headline text-lg sm:text-xl md:text-2xl h-12 sm:h-14 line-clamp-2">
-          <Link href={`/events/${event.id}`} className="hover:text-primary transition-colors">{event.name}</Link>
-        </CardTitle>
-        <CardDescription className="flex items-center pt-1 sm:pt-2 text-xs sm:text-sm">
-          <Tag className="w-4 h-4 mr-2 text-muted-foreground" />
-          {event.category}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="px-3 sm:px-4 pb-2">
-        <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
-          <div className="flex items-center">
-            <Calendar className="w-4 h-4 mr-2" />
-            <span>
-              {event.eventStart ? toSafeDate(event.eventStart).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ''}
-            </span>
+
+      {/* Content Section */}
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-lg font-semibold line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+              <Link href={`/events/${event.id}`} className="hover:underline">
+                {event.name}
+              </Link>
+            </CardTitle>
+            <CardDescription className="flex items-center gap-2 text-sm">
+              <Tag className="h-4 w-4" />
+              <span className="truncate">{event.category}</span>
+            </CardDescription>
           </div>
-          {event.eventEnd && (
-            <div className="flex items-center text-xs text-muted-foreground mt-1">
-              <Calendar className="w-4 h-4 mr-2" />
-              <span>Ends: {toSafeDate(event.eventEnd).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+        </div>
+      </CardHeader>
+
+      <CardContent className="px-4 py-2 flex-1">
+        <div className="space-y-3">
+          {/* Date and Time */}
+          <div className="flex items-center gap-2 text-sm">
+            <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              {event.eventStart ? (
+                <div>
+                  <div className="font-medium">
+                    {toSafeDate(event.eventStart).toLocaleDateString("en-US", { 
+                      weekday: 'short',
+                      month: 'short', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {toSafeDate(event.eventStart).toLocaleTimeString("en-US", { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <span className="text-muted-foreground">Date TBD</span>
+              )}
             </div>
-          )}
-          <div className="flex items-center">
-            <MapPin className="w-4 h-4 mr-2" />
-            <span className="truncate">
+          </div>
+
+          {/* Location */}
+          <div className="flex items-center gap-2 text-sm">
+            <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <span className="truncate text-muted-foreground">
               {event.location}{event.city ? `, ${event.city}` : ""}
             </span>
           </div>
+
+          {/* Event Details */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              <span>{event.ticketsSold || 0} tickets sold</span>
+            </div>
+            {event.organizer && (
+              <div className="flex items-center gap-1">
+                <Star className="h-3 w-3" />
+                <span className="truncate max-w-20">{event.organizer.name}</span>
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
-      <CardFooter className="px-3 sm:px-4 pb-3 sm:pb-4 mt-auto">
-        <Button asChild className="w-full text-xs sm:text-sm md:text-base">
+
+      {/* Footer */}
+      <CardFooter className="p-4 pt-2">
+        <Button 
+          asChild 
+          className="w-full group-hover:bg-primary/90 transition-colors"
+          disabled={status === 'expired'}
+        >
           <Link href={`/events/${event.id}`}>
-            View Event <ArrowRight className="ml-2 h-4 w-4" />
+            {status === 'expired' ? 'Event Ended' : 'View Details'}
+            <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </Button>
       </CardFooter>

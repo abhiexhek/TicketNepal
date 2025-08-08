@@ -6,7 +6,7 @@ import { z } from "zod";
 import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Upload, Image as ImageIcon, MapPin, Clock, Users, DollarSign, Tag, FileText, ArrowLeft } from "lucide-react";
 import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/styles/datepicker-custom.css";
@@ -28,6 +28,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { UserContext } from "@/context/UserContext";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import Link from "next/link";
 
 const MAX_FILE_SIZE = 5000000; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -56,6 +60,8 @@ export default function CreateEventPage() {
   const router = useRouter();
   const [customCategory, setCustomCategory] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formProgress, setFormProgress] = useState(0);
   const popularCategories = [
     "Music",
     "Tech",
@@ -95,6 +101,17 @@ export default function CreateEventPage() {
     },
   });
 
+  // Calculate form progress
+  useEffect(() => {
+    const values = form.getValues();
+    const fields = ['name', 'description', 'category', 'eventStart', 'eventEnd', 'location', 'seatCount', 'price', 'image'];
+    const filledFields = fields.filter(field => {
+      const value = values[field as keyof typeof values];
+      return value !== undefined && value !== null && value !== '';
+    });
+    setFormProgress((filledFields.length / fields.length) * 100);
+  }, [form.watch()]);
+
   // Initialize selectedCategory from form value if present
   useEffect(() => {
     if (form.getValues("category") && !selectedCategory) {
@@ -103,6 +120,8 @@ export default function CreateEventPage() {
   }, [form, selectedCategory]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true);
+    
     // Generate seat IDs (A1, A2, ..., B1, B2, ...)
     function generateSeatIds(count: number): string[] {
       const seats: string[] = [];
@@ -114,6 +133,7 @@ export default function CreateEventPage() {
       }
       return seats;
     }
+    
     const seatIds = generateSeatIds(values.seatCount);
     const formData = new FormData();
     formData.append('name', values.name);
@@ -139,256 +159,453 @@ export default function CreateEventPage() {
       );
 
       if (response.ok) {
-        toast({ title: "Event Created!", description: "Your new event has been successfully created." });
+        toast({ 
+          title: "Event Created Successfully!", 
+          description: "Your new event has been created and is now live on the platform." 
+        });
         router.push('/admin');
       } else {
         const err = await response.json();
         toast({
           title: "Creation Failed",
-          description: err.error || err.message || "Could not create the event.",
+          description: err.error || err.message || "Could not create the event. Please try again.",
           variant: "destructive"
         });
       }
     } catch (error) {
-      toast({ title: "Error", description: "An error occurred.", variant: "destructive" });
+      toast({ 
+        title: "Network Error", 
+        description: "Failed to connect to the server. Please check your internet connection.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="w-full max-w-xl mx-auto py-6 px-2 sm:px-4">
-      <h1 className="text-2xl font-bold mb-6">Create New Event</h1>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Event Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Event Name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl>
-                  <Textarea placeholder="Event Description" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Category</FormLabel>
-                <FormControl>
-                  <select
-                    className="w-full border rounded px-3 py-2 bg-muted focus:bg-secondary focus:border-primary transition-colors"
-                    value={selectedCategory || field.value}
-                    onChange={e => {
-                      setSelectedCategory(e.target.value);
-                      if (e.target.value !== "Other") {
-                        field.onChange(e.target.value);
-                        setCustomCategory("");
-                      } else {
-                        field.onChange("");
-                      }
-                    }}
-                  >
-                    <option value="">Select a category</option>
-                    {popularCategories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </FormControl>
-                {selectedCategory === "Other" && (
-                  <div className="mt-2">
-                    <input
-                      className="w-full border rounded px-3 py-2"
-                      placeholder="Enter custom category"
-                      value={customCategory}
-                      onChange={e => {
-                        setCustomCategory(e.target.value);
-                        field.onChange(e.target.value);
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="container mx-auto py-8 px-4">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/admin">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Link>
+            </Button>
+          </div>
+          <div className="text-center">
+            <h1 className="text-4xl font-bold tracking-tight mb-2">Create New Event</h1>
+            <p className="text-muted-foreground text-lg">
+              Set up your event and start selling tickets to your audience
+            </p>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <Card className="card-elevated mb-8">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Form Completion</span>
+              <span className="text-sm text-muted-foreground">{Math.round(formProgress)}%</span>
+            </div>
+            <Progress value={formProgress} className="h-2" />
+            <p className="text-xs text-muted-foreground mt-2">
+              Complete all fields to create your event
+            </p>
+          </CardContent>
+        </Card>
+
+        <div className="max-w-4xl mx-auto">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              {/* Basic Information */}
+              <Card className="card-elevated">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Basic Information
+                  </CardTitle>
+                  <CardDescription>
+                    Provide the essential details about your event
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            Event Name
+                          </FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter event name" {...field} className="input-professional" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Tag className="h-4 w-4" />
+                            Category
+                          </FormLabel>
+                          <FormControl>
+                            <select
+                              className="w-full border rounded-lg px-3 py-2 bg-background focus:bg-background focus:border-primary transition-colors input-professional"
+                              value={selectedCategory || field.value}
+                              onChange={e => {
+                                setSelectedCategory(e.target.value);
+                                if (e.target.value !== "Other") {
+                                  field.onChange(e.target.value);
+                                  setCustomCategory("");
+                                } else {
+                                  field.onChange("");
+                                }
+                              }}
+                            >
+                              <option value="">Select a category</option>
+                              {popularCategories.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                              ))}
+                            </select>
+                          </FormControl>
+                          {selectedCategory === "Other" && (
+                            <div className="mt-2">
+                              <Input
+                                className="input-professional"
+                                placeholder="Enter custom category"
+                                value={customCategory}
+                                onChange={e => {
+                                  setCustomCategory(e.target.value);
+                                  field.onChange(e.target.value);
+                                }}
+                              />
+                            </div>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Description
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Describe your event in detail..." 
+                            className="min-h-[120px] input-professional"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Provide a compelling description that will attract attendees
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Date & Time */}
+              <Card className="card-elevated">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Date & Time
+                  </CardTitle>
+                  <CardDescription>
+                    Set when your event will take place
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="eventStart"
+                      render={({ field }) => {
+                        const now = new Date();
+                        const selectedDate = field.value ?? null;
+                        let minTime: Date | undefined = undefined;
+                        let maxTime: Date | undefined = undefined;
+                        if (selectedDate) {
+                          const isToday = selectedDate.getFullYear() === now.getFullYear() &&
+                            selectedDate.getMonth() === now.getMonth() &&
+                            selectedDate.getDate() === now.getDate();
+                          if (isToday) {
+                            minTime = now;
+                            maxTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
+                          } else {
+                            minTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 0, 0);
+                            maxTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 23, 59);
+                          }
+                        }
+                        return (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2">
+                              <Clock className="h-4 w-4" />
+                              Event Start
+                            </FormLabel>
+                            <FormControl>
+                              <ReactDatePicker
+                                selected={field.value ?? null}
+                                onChange={date => field.onChange(date)}
+                                showTimeSelect
+                                timeFormat="HH:mm"
+                                timeIntervals={15}
+                                dateFormat="yyyy-MM-dd HH:mm"
+                                minDate={now}
+                                minTime={minTime}
+                                maxTime={maxTime}
+                                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary input-professional"
+                                calendarClassName="custom-datepicker"
+                                dayClassName={date => "rounded-full hover:bg-primary/20"}
+                                popperClassName="z-50"
+                                placeholderText="Select start date and time"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="eventEnd"
+                      render={({ field }) => {
+                        const start = form.getValues("eventStart") ?? null;
+                        const end = field.value ?? null;
+                        let minTime: Date | undefined = undefined;
+                        let maxTime: Date | undefined = undefined;
+                        let minDate = start || new Date();
+                        if (end && start) {
+                          const isSameDay = start.getFullYear() === end.getFullYear() &&
+                            start.getMonth() === end.getMonth() &&
+                            start.getDate() === end.getDate();
+                          if (isSameDay) {
+                            minTime = start;
+                            maxTime = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59);
+                          } else {
+                            minTime = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 0, 0);
+                            maxTime = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59);
+                          }
+                        } else if (end) {
+                          minTime = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 0, 0);
+                          maxTime = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59);
+                        }
+                        return (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2">
+                              <Clock className="h-4 w-4" />
+                              Event End
+                            </FormLabel>
+                            <FormControl>
+                              <ReactDatePicker
+                                selected={field.value ?? null}
+                                onChange={date => field.onChange(date)}
+                                showTimeSelect
+                                timeFormat="HH:mm"
+                                timeIntervals={15}
+                                dateFormat="yyyy-MM-dd HH:mm"
+                                minDate={minDate}
+                                minTime={minTime}
+                                maxTime={maxTime}
+                                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary input-professional"
+                                calendarClassName="custom-datepicker"
+                                dayClassName={date => "rounded-full hover:bg-primary/20"}
+                                popperClassName="z-50"
+                                placeholderText="Select end date and time"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        );
                       }}
                     />
                   </div>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div className="flex space-x-4">
-            <FormField
-                control={form.control}
-                name="eventStart"
-                render={({ field }) => {
-                  const now = new Date();
-                  const selectedDate = field.value ?? null;
-                  let minTime: Date | undefined = undefined;
-                  let maxTime: Date | undefined = undefined;
-                  if (selectedDate) {
-                    const isToday = selectedDate.getFullYear() === now.getFullYear() &&
-                      selectedDate.getMonth() === now.getMonth() &&
-                      selectedDate.getDate() === now.getDate();
-                    if (isToday) {
-                      minTime = now;
-                      maxTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
-                    } else {
-                      minTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 0, 0);
-                      maxTime = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 23, 59);
-                    }
-                  }
-                  return (
-                    <FormItem>
-                      <FormLabel>Event Start</FormLabel>
-                      <FormControl>
-                        <ReactDatePicker
-                          selected={field.value ?? null}
-                          onChange={date => field.onChange(date)}
-                          showTimeSelect
-                          timeFormat="HH:mm"
-                          timeIntervals={15}
-                          dateFormat="yyyy-MM-dd HH:mm"
-                          minDate={now}
-                          // @ts-ignore
-                          minTime={minTime}
-                          // @ts-ignore
-                          maxTime={maxTime}
-                          className={`w-full border rounded px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary${field.value ? ' has-value' : ''}`}
-                          calendarClassName="custom-datepicker"
-                          dayClassName={date => "rounded-full hover:bg-primary/20"}
-                          popperClassName="z-50"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-            <FormField
-              control={form.control}
-              name="eventEnd"
-              render={({ field }) => {
-                const start = form.getValues("eventStart") ?? null;
-                const end = field.value ?? null;
-                let minTime: Date | undefined = undefined;
-                let maxTime: Date | undefined = undefined;
-                let minDate = start || new Date();
-                if (end && start) {
-                  const isSameDay = start.getFullYear() === end.getFullYear() &&
-                    start.getMonth() === end.getMonth() &&
-                    start.getDate() === end.getDate();
-                  if (isSameDay) {
-                    minTime = start;
-                    maxTime = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59);
-                  } else {
-                    minTime = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 0, 0);
-                    maxTime = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59);
-                  }
-                } else if (end) {
-                  minTime = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 0, 0);
-                  maxTime = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59);
-                }
-                return (
-                  <FormItem>
-                    <FormLabel>Event End</FormLabel>
-                    <FormControl>
-                      <ReactDatePicker
-                        selected={field.value ?? null}
-                        onChange={date => field.onChange(date)}
-                        showTimeSelect
-                        timeFormat="HH:mm"
-                        timeIntervals={15}
-                        dateFormat="yyyy-MM-dd HH:mm"
-                        minDate={minDate}
-                        // @ts-ignore
-                        minTime={minTime}
-                        // @ts-ignore
-                        maxTime={maxTime}
-                        className={`w-full border rounded px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary${field.value ? ' has-value' : ''}`}
-                        calendarClassName="custom-datepicker"
-                        dayClassName={date => "rounded-full hover:bg-primary/20"}
-                        popperClassName="z-50"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-          </div>
-          <FormField
-            control={form.control}
-            name="location"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Location</FormLabel>
-                <FormControl>
-                  <Input placeholder="Location" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="seatCount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Number of Seats</FormLabel>
-                <FormControl>
-                  <Input type="number" min={1} placeholder="e.g. 100" {...field} />
-                </FormControl>
-                <FormDescription>Enter the total number of seats for this event. Seats will be auto-numbered (A1, A2, ...).</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Price (NPR)</FormLabel>
-                <FormControl>
-                  <Input type="number" step="1" min="0" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="image"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Event Image</FormLabel>
-                <FormControl>
-                  <Input
-                    type="file"
-                    accept={ACCEPTED_IMAGE_TYPES.join(", ")}
-                    onChange={(e) => field.onChange(e.target.files)}
+                </CardContent>
+              </Card>
+
+              {/* Location & Pricing */}
+              <Card className="card-elevated">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    Location & Pricing
+                  </CardTitle>
+                  <CardDescription>
+                    Set the venue and ticket pricing for your event
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          Location
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter event location" {...field} className="input-professional" />
+                        </FormControl>
+                        <FormDescription>
+                          Provide the full address or venue name
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </FormControl>
-                <FormDescription>Accepted formats: .jpg, .jpeg, .png, .webp (Max size: 5MB)</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit">Create Event</Button>
-        </form>
-      </Form>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="seatCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Number of Seats
+                          </FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min={1} 
+                              placeholder="e.g. 100" 
+                              {...field} 
+                              className="input-professional"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Seats will be auto-numbered (A1, A2, B1, B2, etc.)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4" />
+                            Price (NPR)
+                          </FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              step="1" 
+                              min="0" 
+                              placeholder="0" 
+                              {...field} 
+                              className="input-professional"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Set to 0 for free events
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Event Image */}
+              <Card className="card-elevated">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5" />
+                    Event Image
+                  </CardTitle>
+                  <CardDescription>
+                    Upload an attractive image for your event
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FormField
+                    control={form.control}
+                    name="image"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Upload className="h-4 w-4" />
+                          Event Image
+                        </FormLabel>
+                        <FormControl>
+                          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                            <Input
+                              type="file"
+                              accept={ACCEPTED_IMAGE_TYPES.join(", ")}
+                              onChange={(e) => field.onChange(e.target.files)}
+                              className="hidden"
+                              id="image-upload"
+                            />
+                            <label htmlFor="image-upload" className="cursor-pointer">
+                              <span className="text-sm font-medium text-primary hover:text-primary/80">
+                                Click to upload
+                              </span>
+                              <span className="text-sm text-muted-foreground"> or drag and drop</span>
+                            </label>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              PNG, JPG, JPEG, WEBP up to 5MB
+                            </p>
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Choose a high-quality image that represents your event well
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Submit Button */}
+              <div className="flex justify-center">
+                <Button 
+                  type="submit" 
+                  size="lg" 
+                  className="px-8 py-3 text-lg font-semibold shadow-lg"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      Creating Event...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="mr-2 h-5 w-5" />
+                      Create Event
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
+      </div>
     </div>
   );
 }

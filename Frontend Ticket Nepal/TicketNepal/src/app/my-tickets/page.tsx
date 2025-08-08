@@ -11,7 +11,7 @@ import Link from "next/link";
 import { Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 // Add helper to fix event image URLs
 const getEventImageUrl = (imageUrl: string) => {

@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ETicket } from "@/components/e-ticket";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export default function TicketDetailPage() {
   const { ticketId } = useParams();
