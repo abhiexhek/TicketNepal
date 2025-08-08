@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { ArrowLeft, CheckCircle, XCircle, UserCheck, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Ticket as TicketType } from '@/lib/types';
 import { BrowserQRCodeReader } from '@zxing/browser';
+import { UserContext } from '@/context/UserContext';
 
 interface VerifiedTicket extends TicketType {
   checkedIn?: boolean;
@@ -34,6 +35,41 @@ export default function ScanTicketPage() {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [checkedInTickets, setCheckedInTickets] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  const { currentUser } = useContext(UserContext);
+
+  const testAuth = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+      const token = localStorage.getItem('authToken');
+      
+      const response = await fetch(`${API_URL}/api/tickets/debug/auth`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Auth debug info:', data);
+        toast({
+          title: "Auth Debug Info",
+          description: `Role: ${data.userRole}, Authorities: ${data.authorities?.join(', ')}`,
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "Auth Debug Failed",
+          description: `Status: ${response.status}`,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Auth debug error:', error);
+      toast({
+        title: "Auth Debug Error",
+        description: "Could not test authentication.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const verifyTicket = useCallback(async (qrHint: string) => {
     try {
@@ -41,12 +77,21 @@ export default function ScanTicketPage() {
       const token = localStorage.getItem('authToken');
       // Clean the scanned value
       const cleanHint = qrHint.trim();
+      
+      console.log('Verifying ticket with hint:', cleanHint);
+      console.log('Auth token present:', !!token);
+      
       // Use the new unified endpoint
       const response = await fetch(`${API_URL}/api/tickets/validate/scan?code=${encodeURIComponent(cleanHint)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
+      
+      console.log('Validation response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Validation response data:', data);
+        
         if (data.type === 'multiple') {
           setGroupResult(data);
           setScannedTicket(null);
@@ -72,16 +117,38 @@ export default function ScanTicketPage() {
           toast({ title: "Invalid QR Code", description: "This QR code is not valid for ticket validation.", variant: "destructive" });
         }
       } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Validation error:', errorData);
+        
         setGroupResult(null);
         setScannedTicket(null);
         setIsValidTicket(false);
-        toast({ title: "Invalid or Legacy QR Code", description: "This QR code is not valid for ticket validation. Please use a new QR code.", variant: "destructive" });
+        
+        let errorMessage = "This QR code is not valid for ticket validation.";
+        if (response.status === 403) {
+          errorMessage = "You are not authorized to validate tickets for this event. Please contact the event organizer.";
+        } else if (response.status === 404) {
+          errorMessage = "Ticket not found. Please check the QR code.";
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+        
+        toast({ 
+          title: "Validation Failed", 
+          description: errorMessage, 
+          variant: "destructive" 
+        });
       }
     } catch (error) {
+      console.error('Verification error:', error);
       setGroupResult(null);
       setIsValidTicket(false);
       setScannedTicket(null);
-      toast({ title: "Error", description: "Could not verify ticket.", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: "Could not verify ticket. Please check your connection.", 
+        variant: "destructive" 
+      });
     }
   }, [toast]);
 
@@ -90,6 +157,10 @@ export default function ScanTicketPage() {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
       const token = localStorage.getItem('authToken');
+      
+      console.log('Checking in ticket:', ticketId);
+      console.log('QR code hint:', qrCodeHint);
+      console.log('Auth token present:', !!token);
       
       const response = await fetch(`${API_URL}/api/tickets/checkin`, {
         method: 'POST',
@@ -103,8 +174,12 @@ export default function ScanTicketPage() {
         }),
       });
 
+      console.log('Check-in response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Check-in response data:', data);
+        
         setCheckedInTickets(prev => new Set(prev).add(ticketId));
         toast({
           title: "Ticket Checked In!",
@@ -117,14 +192,26 @@ export default function ScanTicketPage() {
           verifyTicket(qrCodeHint);
         }
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Check-in error:', errorData);
+        
+        let errorMessage = "Could not check in ticket.";
+        if (response.status === 403) {
+          errorMessage = "You are not authorized to check in tickets for this event. Please contact the event organizer.";
+        } else if (response.status === 404) {
+          errorMessage = "Ticket not found.";
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+        
         toast({
           title: "Check-in Failed",
-          description: errorData.error || "Could not check in ticket.",
+          description: errorMessage,
           variant: "destructive"
         });
       }
     } catch (error) {
+      console.error('Check-in error:', error);
       toast({
         title: "Error",
         description: "Could not connect to server.",
@@ -270,6 +357,18 @@ export default function ScanTicketPage() {
           </Link>
         </Button>
         <h1 className="text-2xl font-bold">QR Code Scanner</h1>
+      </div>
+
+      {/* Debug Section */}
+      <div className="mb-6 p-4 bg-gray-100 rounded-lg">
+        <h2 className="text-lg font-semibold mb-2">Debug Information</h2>
+        <p><strong>Current User Role:</strong> {currentUser?.role || 'N/A'}</p>
+        <p><strong>Is Authenticated:</strong> {currentUser ? 'Yes' : 'No'}</p>
+        <p><strong>Auth Token Present:</strong> {localStorage.getItem('authToken') ? 'Yes' : 'No'}</p>
+        <p><strong>API URL:</strong> {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}</p>
+        <Button onClick={testAuth} variant="outline" size="sm" className="mt-2">
+          Test Auth Debug
+        </Button>
       </div>
 
       {/* Scanner controls */}

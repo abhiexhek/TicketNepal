@@ -54,9 +54,27 @@ export default function Home() {
           // Filter out expired events and add ticket sales data
           const validEvents = await Promise.all(
             data.map(async (event: Event) => {
-              // Check if event is expired
+              // Check if event is expired - handle both ISO local and ISO with timezone
               const now = new Date();
-              const eventEnd = event.eventEnd ? new Date(event.eventEnd) : null;
+              let eventEnd: Date | null = null;
+              
+              if (event.eventEnd) {
+                try {
+                  // Try parsing as ISO string first
+                  eventEnd = new Date(event.eventEnd);
+                  // If it's invalid, try parsing as local date
+                  if (isNaN(eventEnd.getTime())) {
+                    const localDate = new Date(event.eventEnd.replace('Z', ''));
+                    if (!isNaN(localDate.getTime())) {
+                      eventEnd = localDate;
+                    }
+                  }
+                } catch (error) {
+                  console.warn('Failed to parse event end date:', event.eventEnd);
+                  eventEnd = null;
+                }
+              }
+              
               const isExpired = eventEnd && now > eventEnd;
               
               if (isExpired) return null;
@@ -80,9 +98,15 @@ export default function Home() {
           setEvents(validEventsFiltered);
           
           // Get featured events (newest 3 events)
-          const sortedByDate = [...validEventsFiltered].sort((a, b) => 
-            new Date(b.eventStart).getTime() - new Date(a.eventStart).getTime()
-          );
+          const sortedByDate = [...validEventsFiltered].sort((a, b) => {
+            try {
+              const dateA = new Date(a.eventStart);
+              const dateB = new Date(b.eventStart);
+              return dateB.getTime() - dateA.getTime();
+            } catch (error) {
+              return 0;
+            }
+          });
           setFeaturedEvents(sortedByDate.slice(0, 3));
           setFilteredEvents(sortedByDate);
         } else {
@@ -252,7 +276,7 @@ export default function Home() {
               {featuredEvents.map((event: Event) => (
                 <Card key={event.id} className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
                   <div className="relative overflow-hidden">
-                    <div className="aspect-video relative">
+                      <div className="aspect-video relative">
                       {event.imageUrl ? (
                         <img
                           src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${event.imageUrl}`}
@@ -263,7 +287,7 @@ export default function Home() {
                         <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300" />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                    </div>
+                      </div>
                     <div className="absolute top-4 right-4 flex gap-2">
                       <Badge className="bg-yellow-500 text-black font-semibold">
                         <Star className="mr-1 h-3 w-3" />
@@ -306,7 +330,7 @@ export default function Home() {
                   </CardContent>
                 </Card>
               ))}
-              </div>
+            </div>
             ) : (
               <Card className="max-w-2xl mx-auto">
                 <CardContent className="flex flex-col items-center justify-center py-16">
