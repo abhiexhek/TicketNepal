@@ -181,7 +181,7 @@ export default function Home() {
                       Explore Events
                     </Link>
                   </Button>
-                  <Button asChild variant="outline" size="lg" className="text-lg px-8 py-6 border-white/30 text-white hover:bg-white/10">
+                  <Button asChild size="lg" className="text-lg px-8 py-6 bg-white text-slate-900 hover:bg-slate-100 font-semibold">
                     <Link href="/auth/signup">
                       <Users className="mr-2 h-5 w-5" />
                       Join Now
@@ -216,8 +216,7 @@ export default function Home() {
         </section>
 
         {/* Featured Events Section */}
-        {featuredEvents.length > 0 && (
-          <section className="container py-20">
+        <section className="container py-20">
             <div className="flex items-center justify-between mb-12">
               <div>
                 <div className="flex items-center gap-3 mb-4">
@@ -235,20 +234,36 @@ export default function Home() {
                 </Link>
               </Button>
             </div>
-            <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {loading ? (
+              <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <Skeleton className="aspect-video w-full" />
+                    <CardContent className="p-6">
+                      <Skeleton className="h-6 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-1/2 mb-4" />
+                      <Skeleton className="h-4 w-1/3" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : featuredEvents.length > 0 ? (
+              <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {featuredEvents.map((event: Event) => (
                 <Card key={event.id} className="group overflow-hidden border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
                   <div className="relative overflow-hidden">
-                    {event.imageUrl && (
-                      <div className="aspect-video relative">
+                    <div className="aspect-video relative">
+                      {event.imageUrl ? (
                         <img
                           src={event.imageUrl.startsWith('http') ? event.imageUrl : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}${event.imageUrl}`}
                           alt={event.name}
                           className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300" />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    </div>
                     <div className="absolute top-4 right-4 flex gap-2">
                       <Badge className="bg-yellow-500 text-black font-semibold">
                         <Star className="mr-1 h-3 w-3" />
@@ -291,9 +306,20 @@ export default function Home() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
+              </div>
+            ) : (
+              <Card className="max-w-2xl mx-auto">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <Star className="h-12 w-12 text-yellow-500 mb-3" />
+                  <h3 className="text-xl font-semibold mb-2">No featured events</h3>
+                  <p className="text-muted-foreground mb-4">New events will appear here automatically.</p>
+                  <Button asChild>
+                    <Link href="#events">Browse All Events</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </section>
-        )}
 
         {/* Events Section */}
         <section id="events" className="container py-20">

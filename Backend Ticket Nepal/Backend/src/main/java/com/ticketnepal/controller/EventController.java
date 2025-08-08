@@ -26,6 +26,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.OffsetDateTime;
 import org.springframework.beans.factory.annotation.Value;
+import java.time.format.DateTimeParseException;
+import java.time.ZoneOffset;
 
 @Configuration
 @EnableScheduling
@@ -95,8 +97,8 @@ public class EventController {
                 String eventStatus = "draft";
                 if (event.getEventStart() != null && event.getEventEnd() != null) {
                     try {
-                        LocalDateTime eventStart = LocalDateTime.parse(event.getEventStart());
-                        LocalDateTime eventEnd = LocalDateTime.parse(event.getEventEnd());
+                        LocalDateTime eventStart = parseToLocalDateTime(event.getEventStart());
+                        LocalDateTime eventEnd = parseToLocalDateTime(event.getEventEnd());
                         
                         if (now.isBefore(eventStart)) {
                             eventStatus = "upcoming";
@@ -275,7 +277,7 @@ public class EventController {
                 .filter(e -> {
                     if (e.getEventEnd() == null) return true;
                     try {
-                        LocalDateTime end = LocalDateTime.parse(e.getEventEnd());
+                        LocalDateTime end = parseToLocalDateTime(e.getEventEnd());
                         return now.isBefore(end.plusDays(1));
                     } catch (Exception ex) {
                         logger.warn("Failed to parse eventEnd for event: {}", e.getId());
@@ -593,7 +595,7 @@ public class EventController {
                     continue;
                 }
                 try {
-                    LocalDateTime end = LocalDateTime.parse(endStr);
+                    LocalDateTime end = parseToLocalDateTime(endStr);
                     if (now.isAfter(end.plusDays(1))) {
                         event.setDeleted(true);
                         eventRepository.save(event);
@@ -616,6 +618,19 @@ public class EventController {
 
         if (!ALLOWED_MIME_TYPES.contains(file.getContentType())) {
             throw new IllegalArgumentException("Only JPEG, PNG, GIF, or WebP images are allowed");
+        }
+    }
+
+    // Flexible parser: supports ISO_LOCAL_DATE_TIME and ISO_OFFSET_DATE_TIME (with 'Z' or timezone)
+    private LocalDateTime parseToLocalDateTime(String value) {
+        if (value == null) throw new DateTimeParseException("null", "", 0);
+        try {
+            // First try without offset
+            return LocalDateTime.parse(value);
+        } catch (DateTimeParseException ex) {
+            // Fallback to offset format
+            OffsetDateTime odt = OffsetDateTime.parse(value);
+            return odt.toLocalDateTime();
         }
     }
 }
