@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
       // (Add production backend domain here if you deploy)
       {
         protocol: 'https',
-        hostname: 'ticketnepal.onrender.com',
+        hostname: 'ticketnepal-backend.onrender.com',
         port: '',
         pathname: '/uploads/images/**',
       },
