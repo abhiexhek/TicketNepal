@@ -24,7 +24,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "http://127.0.0.1:9002",
                         "http://localhost:3000",
                         "http://127.0.0.1:3000",
-                        "https://ticketnepal-frontend.onrender.com"  // Added Render frontend URL
+                        "https://ticketnepal-80fs.onrender.com/"  // Added Render frontend URL
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
