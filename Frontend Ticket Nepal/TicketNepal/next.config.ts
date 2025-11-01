@@ -33,6 +33,18 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'ticketnepal-backend.onrender.com',
+        port: '',
+        pathname: '/uploads/images/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ticketnepal-backend.onrender.com',
+        port: '',
+        pathname: '/api/tickets/qr/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'res.cloudinary.com',
         port: '',
         pathname: '/dfecnmeeh/**',
