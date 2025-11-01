@@ -63,7 +63,7 @@ public class SecurityConfig {
                 "http://localhost:3000", // Next.js default
                 "http://localhost:9002",  // your previous config (keep if needed)
                 "https://ticketnepal-frontend.onrender.com", // Added Render frontend URL
-                "https://ticketnepal-80fs.onrender.com" // Render frontend URL
+                "https://ticketnepal-80fs.onrender.com" // Added Render frontend URL
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));

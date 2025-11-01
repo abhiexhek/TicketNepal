@@ -238,14 +238,4 @@ TicketNepal/
 └── docker-compose.yml
 ```
 
-## 🙏 Acknowledgments
-
-- [Next.js](https://nextjs.org/) for the frontend framework
-- [Spring Boot](https://spring.io/projects/spring-boot) for the backend framework
-- [MongoDB Atlas](https://www.mongodb.com/atlas) for the database
-- [Cloudinary](https://cloudinary.com/) for image storage
-- [Render](https://render.com/) for hosting
-
----
-
 **Happy Coding! 🎉** 
